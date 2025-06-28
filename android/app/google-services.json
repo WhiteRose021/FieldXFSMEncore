@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "969949376307",
+    "project_id": "fieldx-fsm",
+    "storage_bucket": "fieldx-fsm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:969949376307:android:d710a286252b792a2ed846",
+        "android_client_info": {
+          "package_name": "com.fieldx.fieldxfsm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvZ80vInmYBb22eEM-9afF8vZfOtvlqdw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
