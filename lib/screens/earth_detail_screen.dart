@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -68,7 +70,6 @@ class _EarthDetailScreenState extends State<EarthDetailScreen> {
         _screenState = DetailScreenState.loaded;
       });
     } catch (e) {
-      print("❌ Exception in _loadData: $e");
       setState(() {
         _screenState = DetailScreenState.error;
       });
@@ -369,6 +370,7 @@ class _EarthDetailScreenState extends State<EarthDetailScreen> {
 
   Widget _buildNotesInfo() {
     final notes = appointmentDetails?["description"]?.toString() ?? "";
+    // ignore: curly_braces_in_flow_control_structures
     if (notes.isEmpty) return const Text(
       "Δεν υπάρχουν σημειώσεις",
       style: TextStyle(fontSize: 14, color: Colors.grey),
@@ -551,8 +553,8 @@ class _EarthDetailScreenState extends State<EarthDetailScreen> {
         final longitude = double.parse(match.group(2)!);
         return {'latitude': latitude, 'longitude': longitude};
       }
+    // ignore: empty_catches
     } catch (e) {
-      print("❌ Error parsing coordinates from $mapsUrl: $e");
     }
     return null;
   }

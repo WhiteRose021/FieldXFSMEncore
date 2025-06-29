@@ -1,133 +1,330 @@
 // lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/permissions_manager.dart';
+import '../config/backend_config.dart';
+import '../services/auth_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _selectedBackend = 'encore';
+  bool _isDevelopment = true;
+  String _encoreUrl = '';
+  String _tenant = '';
+  String _espoCrmUrl = '';
+  bool _isLoading = false;
+  String _testResult = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentSettings();
+  }
+
+  Future<void> _loadCurrentSettings() async {
+    try {
+      final backend = await BackendConfig.getBackendType();
+      final encoreSettings = await BackendConfig.getEncoreSettings();
+      final espoCrmSettings = await BackendConfig.getEspoCRMSettings();
+
+      setState(() {
+        _selectedBackend = backend;
+        _isDevelopment = encoreSettings['isDevelopment'] ?? true;
+        _encoreUrl = encoreSettings['apiUrl'] ?? '';
+        _tenant = encoreSettings['tenant'] ?? '';
+        _espoCrmUrl = espoCrmSettings['crmDomain'] ?? '';
+      });
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    setState(() {
+      _isLoading = true;
+      _testResult = '';
+    });
+
+    try {
+      if (_selectedBackend == 'encore') {
+        await BackendConfig.configureEncore(
+          apiUrl: _encoreUrl,
+          tenant: _tenant,
+          isDevelopment: _isDevelopment,
+        );
+      } else {
+        await BackendConfig.configureEspoCRM(
+          crmDomain: _espoCrmUrl,
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Settings saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving settings: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _testConnection() async {
+    setState(() {
+      _isLoading = true;
+      _testResult = 'Testing connection...';
+    });
+
+    try {
+      // First save the current settings
+      await _saveSettings();
+
+      // Get the API URL
+      final apiUrl = await BackendConfig.getApiBaseUrl();
+      
+      setState(() {
+        _testResult = 'Testing connection to: $apiUrl\n';
+      });
+
+      // Test basic connectivity (you can expand this)
+      final uri = Uri.parse(apiUrl);
+      
+      setState(() {
+        _testResult += 'Backend: $_selectedBackend\n';
+        _testResult += 'URL: $apiUrl\n';
+        if (_selectedBackend == 'encore') {
+          _testResult += 'Tenant: $_tenant\n';
+          _testResult += 'Development: $_isDevelopment\n';
+        }
+        _testResult += '\n✅ Configuration looks good!\n';
+        _testResult += 'Try logging in to test authentication.';
+      });
+
+    } catch (e) {
+      setState(() {
+        _testResult = '❌ Connection test failed: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: const Color(0xFF1565C0),
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.security),
-              title: const Text('Permissions'),
-              subtitle: const Text('Manage app permissions'),
-              onTap: () => _showPermissionsDialog(context),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.cleaning_services),
-              title: const Text('Clear Cache'),
-              subtitle: const Text('Clear app cache and data'),
-              onTap: () => _clearCache(context),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text('Debug Info'),
-              subtitle: const Text('View debug information'),
-              onTap: () => _showDebugInfo(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _clearCache(BuildContext context) {
-    final permissionsManager = context.read<PermissionsManager>();
-    permissionsManager.clearCache();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cache cleared successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _showDebugInfo(BuildContext context) {
-    final permissionsManager = context.read<PermissionsManager>();
-    final debugInfo = permissionsManager.getDebugSummary();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Debug Information'),
-        content: SingleChildScrollView(
-          child: Text(
-            debugInfo.entries
-                .map((e) => '${e.key}: ${e.value}')
-                .join('\n'),
-          ),
-        ),
+        title: const Text('Backend Settings'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+          Consumer<AuthService>(
+            builder: (context, authService, child) {
+              if (authService.isAuthenticated) {
+                return IconButton(
+                  icon: const Icon(Icons.logout),
+                  onPressed: () async {
+                    await authService.logout();
+                    if (mounted) {
+                      Navigator.of(context).pushReplacementNamed('/login');
+                    }
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
           ),
         ],
       ),
-    );
-  }
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Backend Selection
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Backend Type',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _selectedBackend,
+                      items: const [
+                        DropdownMenuItem(value: 'encore', child: Text('Encore Backend')),
+                        DropdownMenuItem(value: 'espocrm', child: Text('EspoCRM Backend')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedBackend = value!;
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
 
-  void _showPermissionsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Permissions'),
-        content: Consumer<PermissionsManager>(
-          builder: (context, permissions, child) {
-            if (permissions.isLoading) {
-              return const CircularProgressIndicator();
-            }
-            
-            return Column(
-              mainAxisSize: MainAxisSize.min,
+            // Encore Settings
+            if (_selectedBackend == 'encore') ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Encore Settings',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        initialValue: _encoreUrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Encore API URL',
+                          hintText: 'https://your-app.encr.app or http://localhost:4000',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) => _encoreUrl = value,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        initialValue: _tenant,
+                        decoration: const InputDecoration(
+                          labelText: 'Tenant',
+                          hintText: 'default',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) => _tenant = value,
+                      ),
+                      const SizedBox(height: 16),
+                      SwitchListTile(
+                        title: const Text('Development Mode'),
+                        subtitle: const Text('Use local development settings'),
+                        value: _isDevelopment,
+                        onChanged: (value) {
+                          setState(() {
+                            _isDevelopment = value;
+                            if (value) {
+                              _encoreUrl = 'http://localhost:4000';
+                            } else {
+                              _encoreUrl = 'https://your-app.encr.app';
+                            }
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            // EspoCRM Settings
+            if (_selectedBackend == 'espocrm') ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'EspoCRM Settings',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        initialValue: _espoCrmUrl,
+                        decoration: const InputDecoration(
+                          labelText: 'EspoCRM Domain',
+                          hintText: 'https://your-espocrm.com',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) => _espoCrmUrl = value,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
+
+            // Action Buttons
+            Row(
               children: [
-                ListTile(
-                  leading: Icon(
-                    permissions.canCreate ? Icons.check : Icons.close,
-                    color: permissions.canCreate ? Colors.green : Colors.red,
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _saveSettings,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Save Settings'),
                   ),
-                  title: const Text('Create'),
                 ),
-                ListTile(
-                  leading: Icon(
-                    permissions.canEdit ? Icons.check : Icons.close,
-                    color: permissions.canEdit ? Colors.green : Colors.red,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isLoading ? null : _testConnection,
+                    child: const Text('Test Connection'),
                   ),
-                  title: const Text('Edit'),
-                ),
-                ListTile(
-                  leading: Icon(
-                    permissions.canDelete ? Icons.check : Icons.close,
-                    color: permissions.canDelete ? Colors.green : Colors.red,
-                  ),
-                  title: const Text('Delete'),
                 ),
               ],
-            );
-          },
+            ),
+
+            // Test Results
+            if (_testResult.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Test Results',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _testResult,
+                        style: const TextStyle(fontFamily: 'monospace'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }

@@ -1,5 +1,7 @@
 // lib/screens/autopsies_screen.dart - Complete Working Version
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../repositories/autopsy_repository.dart';
@@ -8,6 +10,7 @@ import '../models/autopsy_models.dart';
 import '../utils/error_handler.dart';
 import '../utils/permissions_helper.dart';
 import 'autopsy_detail_screen.dart';
+import '../widgets/sidebar_menu.dart';
 
 class AutopsiesScreen extends StatefulWidget {
   const AutopsiesScreen({super.key});
@@ -72,6 +75,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
+      drawer: const SidebarMenu(), // 👈 ADD THIS LINE
       backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: primaryBlue,

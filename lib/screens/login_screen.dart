@@ -1,72 +1,541 @@
 // lib/screens/login_screen.dart
-import 'package:flutter/material.dart';
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
-class LoginScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
+import '../config/backend_config.dart';
+import 'debug_screen.dart';
+import 'settings_screen.dart';
+
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  String _selectedBackend = 'encore';
+  String _apiUrl = '';
+  
+  late AnimationController _logoAnimationController;
+  late Animation<double> _logoAnimation;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+    _loadSettings();
+  }
+
+  void _initializeAnimations() {
+    _logoAnimationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    _logoAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    _logoAnimationController.repeat(reverse: true);
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final backend = await BackendConfig.getBackendType();
+      final apiUrl = await BackendConfig.getApiBaseUrl();
+      
+      setState(() {
+        _selectedBackend = backend;
+        _apiUrl = apiUrl;
+      });
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _logoAnimationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final success = await authService.authenticate(username, password);
+      
+      if (success && mounted) {
+        // Store login success
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        
+        // Navigate to the main app
+        Navigator.of(context).pushReplacementNamed('/dashboard');
+      } else if (mounted) {
+        _showErrorSnackBar('Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      if (mounted) {
+        _showErrorSnackBar('Login error: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Dismiss',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _switchBackend() async {
+    final newBackend = _selectedBackend == 'encore' ? 'espocrm' : 'encore';
+    
+    try {
+      if (newBackend == 'encore') {
+        await BackendConfig.configureEncore();
+      } else {
+        await BackendConfig.configureEspoCRM();
+      }
+      
+      await _loadSettings();
+      _showSuccessSnackBar('Switched to ${newBackend.toUpperCase()} backend');
+    } catch (e) {
+      _showErrorSnackBar('Error switching backend: $e');
+    }
+  }
+
+  Widget _buildBackendIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _selectedBackend == 'encore' ? Colors.blue.shade100 : Colors.orange.shade100,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _selectedBackend == 'encore' ? Colors.blue : Colors.orange,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _selectedBackend == 'encore' ? Icons.cloud : Icons.business,
+            size: 16,
+            color: _selectedBackend == 'encore' ? Colors.blue : Colors.orange,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            _selectedBackend.toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: _selectedBackend == 'encore' ? Colors.blue : Colors.orange,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApiUrlIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        _apiUrl.isNotEmpty ? _apiUrl : 'No API URL configured',
+        style: TextStyle(
+          fontSize: 10,
+          color: Colors.grey.shade600,
+          fontFamily: 'monospace',
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
-      body: Center(
-        child: Container(
-          margin: const EdgeInsets.all(32),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+      
+      // Debug floating action button
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const DebugScreen()),
+          );
+        },
+        backgroundColor: Colors.orange,
+        child: const Icon(Icons.bug_report),
+      ),
+      
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          // Backend switcher
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.grey),
+            onSelected: (String result) {
+              switch (result) {
+                case 'switch_backend':
+                  _switchBackend();
+                  break;
+                case 'settings':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                  );
+                  break;
+                case 'debug':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DebugScreen()),
+                  );
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'switch_backend',
+                child: Row(
+                  children: [
+                    Icon(
+                      _selectedBackend == 'encore' ? Icons.business : Icons.cloud,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text('Switch to ${_selectedBackend == 'encore' ? 'EspoCRM' : 'Encore'}'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings, size: 20),
+                    SizedBox(width: 8),
+                    Text('Backend Settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'debug',
+                child: Row(
+                  children: [
+                    Icon(Icons.bug_report, size: 20),
+                    SizedBox(width: 8),
+                    Text('Debug & Clear Cache'),
+                  ],
+                ),
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.login,
-                size: 64,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Login Required',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+        ],
+      ),
+      
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Backend and API indicators
+                Column(
+                  children: [
+                    _buildBackendIndicator(),
+                    const SizedBox(height: 8),
+                    _buildApiUrlIndicator(),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Please log in to access the application',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  // Implement login logic here
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  foregroundColor: Colors.white,
+                const SizedBox(height: 32),
+                
+                // Main login card
+                Card(
+                  elevation: 8,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Animated logo
+                          AnimatedBuilder(
+                            animation: _logoAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _logoAnimation.value,
+                                child: Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1565C0),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF1565C0).withOpacity(0.3),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock,
+                                    color: Colors.white,
+                                    size: 40,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          // Title
+                          const Text(
+                            'Welcome Back',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          Text(
+                            'Please sign in to continue',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // Username field
+                          TextFormField(
+                            controller: _usernameController,
+                            decoration: InputDecoration(
+                              labelText: 'Username',
+                              hintText: 'Enter your username',
+                              prefixIcon: const Icon(Icons.person_outline),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF1565C0),
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            enabled: !_isLoading,
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) {
+                                return 'Please enter your username';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Password field
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              hintText: 'Enter your password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF1565C0),
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            enabled: !_isLoading,
+                            onFieldSubmitted: (_) => _handleLogin(),
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) {
+                                return 'Please enter your password';
+                              }
+                              if (value!.length < 3) {
+                                return 'Password must be at least 3 characters';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          // Login button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1565C0),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Sign In',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Quick actions
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                                  );
+                                },
+                                icon: const Icon(Icons.settings, size: 16),
+                                label: const Text('Settings'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF1565C0),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _switchBackend,
+                                icon: Icon(
+                                  _selectedBackend == 'encore' ? Icons.business : Icons.cloud,
+                                  size: 16,
+                                ),
+                                label: Text('Switch to ${_selectedBackend == 'encore' ? 'CRM' : 'Encore'}'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Text(
-                  'Login',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                
+                const SizedBox(height: 24),
+                
+                // Version info
+                Text(
+                  'FieldX FSM v1.0.0',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

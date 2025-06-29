@@ -15,7 +15,7 @@ class AutopsyListScreen extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<AutopsyClient>(
-          create: (_) => AutopsyClient(baseUrl: 'https://your-api-url.com'),
+          create: (_) => AutopsyClient(baseUrl: 'https://applink.fieldx.gr/api'),
         ),
         ChangeNotifierProvider<PermissionsManager>(
           create: (_) => PermissionsManager(),

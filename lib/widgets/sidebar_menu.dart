@@ -1,6 +1,6 @@
 // lib/widgets/sidebar_menu.dart
 import 'package:flutter/material.dart';
-import '../screens/enhanced_login_screen.dart';
+import '../screens/login_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/autopsies_screen.dart';
 import '../screens/settings_screen.dart';
@@ -85,7 +85,7 @@ class SidebarMenu extends StatelessWidget {
             onTap: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
-                  builder: (context) => const EnhancedLoginScreen(),
+                  builder: (context) => const LoginScreen(),
                 ),
                 (route) => false,
               );

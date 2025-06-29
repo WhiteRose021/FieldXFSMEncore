@@ -1,6 +1,8 @@
 // lib/services/enhanced_service_adapters.dart
 // Enhanced version of your service adapters with backend switching support (Discord Logger Removed)
 
+// ignore_for_file: unused_field, deprecated_member_use_from_same_package, prefer_typing_uninitialized_variables, strict_top_level_inference, duplicate_ignore
+
 import 'enhanced_unified_crm_service.dart';
 
 /// ==================== ENHANCED ADAPTER CLASSES ====================
@@ -25,7 +27,6 @@ class AppointmentService {
   static final EnhancedUnifiedCRMService _service = EnhancedUnifiedCRMService.instance;
   
   static const String apiKey = "espocrmapikey"; // Kept for compatibility
-  static const int _batchSize = 50;
   
   // Expose baseUrl for SyncEngine compatibility
   static Future<String> get baseUrl async {
@@ -124,7 +125,6 @@ class CSplicingWorkService {
   }
 
   Future<void> migrateOldCachedBuildings() async {
-    print("📦 Migration handled by enhanced unified service");
   }
 
   /// New backend switching methods
@@ -155,6 +155,7 @@ class AutopsyAppointmentService {
   }
 
   static Future<Map<String, String>> get authHeaders async {
+    // ignore: deprecated_member_use_from_same_package
     return await _service.getOptimalHeaders();
   }
   
@@ -162,10 +163,8 @@ class AutopsyAppointmentService {
   Future<List<Map<String, dynamic>>> fetchTechnicianAutopsyAppointments() async {
     try {
       final appointments = await _service.fetchTechnicianAutopsyAppointments();
-      print("✅ Fetched ${appointments.length} autopsy appointments from ${_service.getCurrentBackend().name} backend");
       return appointments;
     } catch (e) {
-      print("❌ Error fetching technician autopsy appointments: $e");
       return [];
     }
   }
@@ -231,10 +230,8 @@ class ConstructionAppointmentService {
   Future<List<Map<String, dynamic>>> fetchTechnicianConstructionAppointments() async {
     try {
       final appointments = await _service.fetchTechnicianConstructionAppointments(forceRefresh: false);
-      print("✅ Loaded ${appointments.length} construction appointments from ${_service.getCurrentBackend().name} backend");
       return appointments;
     } catch (e) {
-      print("❌ Error fetching construction appointments: $e");
       return [];
     }
   }
@@ -243,10 +240,8 @@ class ConstructionAppointmentService {
   Future<List<Map<String, dynamic>>> refreshConstructionAppointments() async {
     try {
       final appointments = await _service.fetchTechnicianConstructionAppointments(forceRefresh: true);
-      print("✅ Refreshed ${appointments.length} construction appointments from ${_service.getCurrentBackend().name} backend");
       return appointments;
     } catch (e) {
-      print("❌ Error refreshing construction appointments: $e");
       return [];
     }
   }
@@ -295,20 +290,16 @@ class BackendManager {
       isDevelopment: isDevelopment,
     );
     
-    print("🚀 App initialized with ${backendType.name} backend" +
-        (tenantCode != null ? " (tenant: $tenantCode)" : ""));
   }
   
   /// Switch the entire app to Encore backend
   static Future<void> switchToEncore({required String tenantCode}) async {
     await _service.switchToEncore(tenantCode: tenantCode);
-    print("🔄 Entire app switched to Encore backend (tenant: $tenantCode)");
   }
   
   /// Switch the entire app to EspoCRM backend
   static Future<void> switchToEspoCRM() async {
     await _service.switchToEspoCRM();
-    print("🔄 Entire app switched to EspoCRM backend");
   }
   
   /// Get current backend type
@@ -331,7 +322,6 @@ class BackendManager {
   static Future<void> logout() async {
     // Add logout logic for both backends
     // Clear tokens, cache, etc.
-    print("👋 Logged out from ${getCurrentBackend().name} backend");
   }
   
   /// Test connectivity to current backend

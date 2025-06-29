@@ -21,7 +21,6 @@ class AuthService extends ChangeNotifier {
 
   Future<bool> authenticate(String username, String password) async {
   try {
-    print("🔐 AuthenticationService.authenticate called for user: $username");
     
     // Get current backend type
     final prefs = await SharedPreferences.getInstance();
@@ -37,7 +36,6 @@ class AuthService extends ChangeNotifier {
       return result['success'] == true;
     }
   } catch (e) {
-    print("❌ Authentication failed: $e");
     return false;
   }
 }
@@ -54,7 +52,7 @@ Future<Map<String, dynamic>> _performEncoreAuthentication(String username, Strin
     if (isDevelopment) {
       baseUrl = 'http://localhost:4000'; // Local Encore
     } else {
-      baseUrl = 'https://production-encore-url.com'; // Production Encore
+      baseUrl = 'https://applink.fieldx.gr/api'; // Production Encore
     }
     
     final body = {
@@ -92,7 +90,6 @@ Future<Map<String, dynamic>> _performEncoreAuthentication(String username, Strin
       throw Exception('Authentication failed with status: ${response.statusCode}');
     }
   } catch (e) {
-    print("❌ Encore authentication error: $e");
     return {'success': false, 'error': e.toString()};
   }
 }
@@ -135,7 +132,6 @@ Future<Map<String, dynamic>> _performEspoCRMAuthentication(String username, Stri
       throw Exception('EspoCRM authentication failed with status: ${response.statusCode}');
     }
   } catch (e) {
-    print("❌ EspoCRM authentication error: $e");
     return {'success': false, 'error': e.toString()};
   }
 }
@@ -161,9 +157,8 @@ Future<void> _storeAuthenticationData(Map<String, dynamic> authData, String back
     }
     
     await prefs.setString('backend', backend);
-    print("✅ Authentication data stored successfully for $backend backend");
+  // ignore: empty_catches
   } catch (e) {
-    print("⚠️ Failed to store authentication data: $e");
   }
 }
 
