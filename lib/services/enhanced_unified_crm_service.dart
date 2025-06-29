@@ -54,7 +54,7 @@ class EnhancedUnifiedCRMService {
       if (isDevelopment) {
         // Map tenant to Encore backend port
         final backendPort = _getTenantBackendPort(tenantCode);
-        _encoreBaseUrl = 'http://192.168.4.20:$backendPort';
+        _encoreBaseUrl = 'https://applink.fieldx.gr/api';
       } else {
         _encoreBaseUrl = 'https://api.yourdomain.com';
       }

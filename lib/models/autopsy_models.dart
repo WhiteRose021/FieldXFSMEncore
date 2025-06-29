@@ -1,443 +1,510 @@
-// lib/models/autopsy_models.dart - FIXED VERSION
+// lib/models/autopsy_models.dart
 import 'package:json_annotation/json_annotation.dart';
 
 part 'autopsy_models.g.dart';
 
-// Core Autopsy Model
-@JsonSerializable()
-// Replace your entire CAutopsy class in lib/models/autopsy_models.dart with this:
+// ============= MAIN AUTOPSY MODEL =============
 
 @JsonSerializable()
 class CAutopsy {
   final String id;
   final String? name;
-  final bool? deleted;
+  final String? displayName;
   final String? description;
-  @JsonKey(name: 'created_at')
+  final bool? deleted;
   final DateTime? createdAt;
-  @JsonKey(name: 'modified_at')
   final DateTime? modifiedAt;
-  @JsonKey(name: 'created_by_id')
+  final DateTime? deletedAt;
   final String? createdById;
-  @JsonKey(name: 'modified_by_id')
   final String? modifiedById;
-  @JsonKey(name: 'assigned_user_id')
   final String? assignedUserId;
-  @JsonKey(name: 'tenant_id')
   final String? tenantId;
-  @JsonKey(name: 'stream_updated_at')
   final DateTime? streamUpdatedAt;
-  @JsonKey(name: 'version_number')
   final int? versionNumber;
+  final bool? isDeleted;
   
-  // Autopsy specific fields
-  @JsonKey(name: 'autopsyfulladdress')
+  // Address fields
   final String? autopsyFullAddress;
-  @JsonKey(name: 'autopsystreet')
   final String? autopsyStreet;
-  @JsonKey(name: 'autopsypostalcode')
   final String? autopsyPostalCode;
-  @JsonKey(name: 'autopsymunicipality')
   final String? autopsyMunicipality;
-  @JsonKey(name: 'autopsystate')
   final String? autopsyState;
-  @JsonKey(name: 'autopsycity')
   final String? autopsyCity;
-  @JsonKey(name: 'autopsyage')
-  final String? autopsyAge;
-  @JsonKey(name: 'autopsyak')
-  final String? autopsyAk;
-  @JsonKey(name: 'autopsyadminemail')
-  final String? autopsyAdminEmail;
-  @JsonKey(name: 'autopsyadminmobile')
-  final String? autopsyAdminMobile;
-  @JsonKey(name: 'autopsylandlinephonenumber')
-  final String? autopsyLandlinePhoneNumber;
-  @JsonKey(name: 'autopsybid')
-  final String? autopsyBid;
-  @JsonKey(name: 'autopsycab')
-  final String? autopsyCab;
-  @JsonKey(name: 'autopsycategory')
-  final String? autopsyCategory;
-  @JsonKey(name: 'autopsycustomeremail')
-  final String? autopsyCustomerEmail;
-  @JsonKey(name: 'autopsycustomermobile')
-  final String? autopsyCustomerMobile;
-  @JsonKey(name: 'autopsyoutofsystem')
-  final bool? autopsyOutOfSystem;
-  @JsonKey(name: 'autopsycustomerfloor')
-  final String? autopsyCustomerFloor;
-  @JsonKey(name: 'autopsylatitude')
-  final String? autopsyLatitude;
-  @JsonKey(name: 'autopsylongtitude')
-  final String? autopsyLongitude;
-  @JsonKey(name: 'autopsyordernumber')
-  final String? autopsyOrderNumber;
-  @JsonKey(name: 'autopsypilot')
-  final String? autopsyPilot;
-  @JsonKey(name: 'autopsystatus')
-  final String? autopsyStatus;
-  @JsonKey(name: 'autopsycomments')
-  final String? autopsyComments;
-  @JsonKey(name: 'autopsyttlp')
-  final String? autopsyTtlp;
-  @JsonKey(name: 'autopsyttllppptest')
-  final String? autopsyTtllpppTest;
-  @JsonKey(name: 'building_id')
-  final String? buildingId;
-  @JsonKey(name: 'autopsycustomername')
+  final String? address1;
+  final String? address2;
+  final String? city;
+  final String? state;
+  final String? postcode;
+  final String? country;
+  
+  // Customer fields
   final String? autopsyCustomerName;
-  final String? type;
-  @JsonKey(name: 'adminautopsyname')
-  final String? adminAutopsyName;
-  @JsonKey(name: 'autopsyadminlandline')
+  final String? autopsycustomername;
+  final String? autopsyCustomerEmail;
+  final String? autopsycustomeremail;
+  final String? autopsyCustomerMobile;
+  final String? autopsycustomermobile;
+  final String? autopsyCustomerFloor;
+  
+  // Contact fields
+  final String? autopsyAge;
+  final String? autopsyAk;
+  final String? autopsyAdminEmail;
+  final String? autopsyAdminMobile;
+  final String? autopsyLandlinePhoneNumber;
   final String? autopsyAdminLandline;
+  final String? adminAutopsyName;
+  
+  // Business fields
+  final String? autopsyBid;
+  final String? autopsybid;
+  final String? autopsyCab;
+  final String? autopsycab;
+  final String? autopsyCategory;
+  final String? autopsycategory;
+  final String? autopsyOrderNumber;
+  final String? autopsyordernumber;
+  final String? autopsyPilot;
+  final String? type;
   
   // Status fields
-  @JsonKey(name: 'technicalcheckstatus')
+  final String? autopsyStatus;
+  final String? autopsystatus;
   final String? technicalCheckStatus;
-  @JsonKey(name: 'soilworkstatus')
+  final String? technicalcheckstatus;
   final String? soilWorkStatus;
-  @JsonKey(name: 'constructionstatus')
   final String? constructionStatus;
-  @JsonKey(name: 'splicingstatus')
   final String? splicingStatus;
-  @JsonKey(name: 'billingstatus')
   final String? billingStatus;
-  @JsonKey(name: 'malfunctionstatus')
   final String? malfunctionStatus;
+  
+  // Additional fields
+  final String? autopsyComments;
+  final String? autopsycomments;
+  final String? autopsyOutOfSystem;
+  final double? autopsyLatitude;
+  final double? autopsyLongitude;
+  final String? autopsyTtlp;
+  final String? autopsyTtllpppTest;
+  final String? buildingId;
 
-  const CAutopsy({
+  CAutopsy({
     required this.id,
     this.name,
-    this.deleted,
+    this.displayName,
     this.description,
+    this.deleted,
     this.createdAt,
     this.modifiedAt,
+    this.deletedAt,
     this.createdById,
     this.modifiedById,
     this.assignedUserId,
     this.tenantId,
     this.streamUpdatedAt,
     this.versionNumber,
+    this.isDeleted,
     this.autopsyFullAddress,
     this.autopsyStreet,
     this.autopsyPostalCode,
     this.autopsyMunicipality,
     this.autopsyState,
     this.autopsyCity,
+    this.address1,
+    this.address2,
+    this.city,
+    this.state,
+    this.postcode,
+    this.country,
+    this.autopsyCustomerName,
+    this.autopsycustomername,
+    this.autopsyCustomerEmail,
+    this.autopsycustomeremail,
+    this.autopsyCustomerMobile,
+    this.autopsycustomermobile,
+    this.autopsyCustomerFloor,
     this.autopsyAge,
     this.autopsyAk,
     this.autopsyAdminEmail,
     this.autopsyAdminMobile,
     this.autopsyLandlinePhoneNumber,
-    this.autopsyBid,
-    this.autopsyCab,
-    this.autopsyCategory,
-    this.autopsyCustomerEmail,
-    this.autopsyCustomerMobile,
-    this.autopsyOutOfSystem,
-    this.autopsyCustomerFloor,
-    this.autopsyLatitude,
-    this.autopsyLongitude,
-    this.autopsyOrderNumber,
-    this.autopsyPilot,
-    this.autopsyStatus,
-    this.autopsyComments,
-    this.autopsyTtlp,
-    this.autopsyTtllpppTest,
-    this.buildingId,
-    this.autopsyCustomerName,
-    this.type,
-    this.adminAutopsyName,
     this.autopsyAdminLandline,
+    this.adminAutopsyName,
+    this.autopsyBid,
+    this.autopsybid,
+    this.autopsyCab,
+    this.autopsycab,
+    this.autopsyCategory,
+    this.autopsycategory,
+    this.autopsyOrderNumber,
+    this.autopsyordernumber,
+    this.autopsyPilot,
+    this.type,
+    this.autopsyStatus,
+    this.autopsystatus,
     this.technicalCheckStatus,
+    this.technicalcheckstatus,
     this.soilWorkStatus,
     this.constructionStatus,
     this.splicingStatus,
     this.billingStatus,
     this.malfunctionStatus,
+    this.autopsyComments,
+    this.autopsycomments,
+    this.autopsyOutOfSystem,
+    this.autopsyLatitude,
+    this.autopsyLongitude,
+    this.autopsyTtlp,
+    this.autopsyTtllpppTest,
+    this.buildingId,
   });
 
-  // FIXED: Custom fromJson that handles ALL int-to-bool conversions safely
-  factory CAutopsy.fromJson(Map<String, dynamic> json) {
-    try {
-      return CAutopsy(
-        id: json['id']?.toString() ?? '',
-        name: _safeString(json['name']),
-        deleted: _safeBool(json['deleted']), // FIXED: Safe bool conversion
-        description: _safeString(json['description']),
-        createdAt: _safeDateTime(json['created_at']),
-        modifiedAt: _safeDateTime(json['modified_at']),
-        createdById: _safeString(json['created_by_id']),
-        modifiedById: _safeString(json['modified_by_id']),
-        assignedUserId: _safeString(json['assigned_user_id']),
-        tenantId: _safeString(json['tenant_id']),
-        streamUpdatedAt: _safeDateTime(json['stream_updated_at']),
-        versionNumber: _safeInt(json['version_number']),
-        autopsyFullAddress: _safeString(json['autopsyfulladdress']),
-        autopsyStreet: _safeString(json['autopsystreet']),
-        autopsyPostalCode: _safeString(json['autopsypostalcode']),
-        autopsyMunicipality: _safeString(json['autopsymunicipality']),
-        autopsyState: _safeString(json['autopsystate']),
-        autopsyCity: _safeString(json['autopsycity']),
-        autopsyAge: _safeString(json['autopsyage']),
-        autopsyAk: _safeString(json['autopsyak']),
-        autopsyAdminEmail: _safeString(json['autopsyadminemail']),
-        autopsyAdminMobile: _safeString(json['autopsyadminmobile']),
-        autopsyLandlinePhoneNumber: _safeString(json['autopsylandlinephonenumber']),
-        autopsyBid: _safeString(json['autopsybid']),
-        autopsyCab: _safeString(json['autopsycab']),
-        autopsyCategory: _safeString(json['autopsycategory']),
-        autopsyCustomerEmail: _safeString(json['autopsycustomeremail']),
-        autopsyCustomerMobile: _safeString(json['autopsycustomermobile']),
-        autopsyOutOfSystem: _safeBool(json['autopsyoutofsystem']), // FIXED: Safe bool conversion
-        autopsyCustomerFloor: _safeString(json['autopsycustomerfloor']),
-        autopsyLatitude: _safeString(json['autopsylatitude']),
-        autopsyLongitude: _safeString(json['autopsylongtitude']),
-        autopsyOrderNumber: _safeString(json['autopsyordernumber']),
-        autopsyPilot: _safeString(json['autopsypilot']),
-        autopsyStatus: _safeString(json['autopsystatus']),
-        autopsyComments: _safeString(json['autopsycomments']),
-        autopsyTtlp: _safeString(json['autopsyttlp']),
-        autopsyTtllpppTest: _safeString(json['autopsyttllppptest']),
-        buildingId: _safeString(json['building_id']),
-        autopsyCustomerName: _safeString(json['autopsycustomername']),
-        type: _safeString(json['type']),
-        adminAutopsyName: _safeString(json['adminautopsyname']),
-        autopsyAdminLandline: _safeString(json['autopsyadminlandline']),
-        technicalCheckStatus: _safeString(json['technicalcheckstatus']),
-        soilWorkStatus: _safeString(json['soilworkstatus']),
-        constructionStatus: _safeString(json['constructionstatus']),
-        splicingStatus: _safeString(json['splicingstatus']),
-        billingStatus: _safeString(json['billingstatus']),
-        malfunctionStatus: _safeString(json['malfunctionstatus']),
-      );
-    } catch (e, stackTrace) {
-      print('❌ CRITICAL ERROR: Failed to parse CAutopsy from JSON: $e');
-      print('📋 Stack trace: $stackTrace');
-      print('📋 JSON keys: ${json.keys.toList()}');
-      
-      // Create a minimal valid object to prevent total crash
-      return CAutopsy(
-        id: json['id']?.toString() ?? 'unknown',
-        name: json['name']?.toString() ?? 'Unknown Autopsy',
-      );
-    }
-  }
-
+  factory CAutopsy.fromJson(Map<String, dynamic> json) => _$CAutopsyFromJson(json);
   Map<String, dynamic> toJson() => _$CAutopsyToJson(this);
 
-  // SAFE CONVERSION HELPERS - Handle all API data type inconsistencies
-  
-  static String? _safeString(dynamic value) {
-    if (value == null) return null;
-    if (value is String && value.trim().isEmpty) return null;
-    return value.toString();
-  }
-
-  static bool? _safeBool(dynamic value) {
-    if (value == null) return null;
-    
-    if (value is bool) {
-      return value;
-    } else if (value is int) {
-      return value == 1; // 1 = true, 0 = false
-    } else if (value is String) {
-      final lower = value.toLowerCase().trim();
-      if (lower.isEmpty) return null;
-      return lower == 'true' || lower == '1' || lower == 'yes' || lower == 'on';
-    }
-    
-    return false;
-  }
-
-  static int? _safeInt(dynamic value) {
-    if (value == null) return null;
-    
-    if (value is int) {
-      return value;
-    } else if (value is String) {
-      return int.tryParse(value);
-    } else if (value is double) {
-      return value.toInt();
-    }
-    
-    return null;
-  }
-
-  static DateTime? _safeDateTime(dynamic value) {
-    if (value == null) return null;
-    
-    try {
-      if (value is String && value.isNotEmpty) {
-        return DateTime.parse(value);
-      }
-    } catch (e) {
-      print('⚠️ Failed to parse DateTime: $value');
-    }
-    
-    return null;
-  }
-
-  // UTILITY METHODS
-  
-  String get displayName => name ?? 'Autopsy ${id.substring(0, 8)}';
-  
+  // Computed properties
   String get fullAddress {
+    if (autopsyFullAddress?.isNotEmpty == true) return autopsyFullAddress!;
+    
     final parts = <String>[];
-    if (autopsyStreet?.isNotEmpty == true) parts.add(autopsyStreet!);
-    if (autopsyCity?.isNotEmpty == true) parts.add(autopsyCity!);
-    if (autopsyPostalCode?.isNotEmpty == true) parts.add(autopsyPostalCode!);
-    return parts.isNotEmpty ? parts.join(', ') : (autopsyFullAddress ?? 'No address');
+    if (address1?.isNotEmpty == true) parts.add(address1!);
+    if (address2?.isNotEmpty == true) parts.add(address2!);
+    if (city?.isNotEmpty == true) parts.add(city!);
+    if (state?.isNotEmpty == true) parts.add(state!);
+    if (postcode?.isNotEmpty == true) parts.add(postcode!);
+    return parts.join(', ');
   }
-  
-  bool get isDeleted => deleted == true;
-  bool get isOutOfSystem => autopsyOutOfSystem == true;
-  
+
+  String get statusDisplayName {
+    return AutopsyOptions.getStatusLabel(autopsyStatus ?? autopsystatus) ?? 
+           autopsyStatus ?? autopsystatus ?? 'Unknown';
+  }
+
+  String get categoryDisplayName {
+    return AutopsyOptions.getCategoryLabel(autopsyCategory ?? autopsycategory) ?? 
+           autopsyCategory ?? autopsycategory ?? 'Unknown';
+  }
+
+  bool get isActive => deleted != true && isDeleted != true;
+
+  String get effectiveDisplayName {
+    return displayName ?? name ?? autopsyCustomerName ?? autopsycustomername ?? 'Autopsy $id';
+  }
+
   // Copy with method for updates
   CAutopsy copyWith({
     String? id,
     String? name,
-    bool? deleted,
+    String? displayName,
     String? description,
+    bool? deleted,
     DateTime? createdAt,
     DateTime? modifiedAt,
+    DateTime? deletedAt,
     String? createdById,
     String? modifiedById,
     String? assignedUserId,
     String? tenantId,
     DateTime? streamUpdatedAt,
     int? versionNumber,
+    bool? isDeleted,
     String? autopsyFullAddress,
     String? autopsyStreet,
     String? autopsyPostalCode,
     String? autopsyMunicipality,
     String? autopsyState,
     String? autopsyCity,
+    String? address1,
+    String? address2,
+    String? city,
+    String? state,
+    String? postcode,
+    String? country,
+    String? autopsyCustomerName,
+    String? autopsycustomername,
+    String? autopsyCustomerEmail,
+    String? autopsycustomeremail,
+    String? autopsyCustomerMobile,
+    String? autopsycustomermobile,
+    String? autopsyCustomerFloor,
     String? autopsyAge,
     String? autopsyAk,
     String? autopsyAdminEmail,
     String? autopsyAdminMobile,
     String? autopsyLandlinePhoneNumber,
-    String? autopsyBid,
-    String? autopsyCab,
-    String? autopsyCategory,
-    String? autopsyCustomerEmail,
-    String? autopsyCustomerMobile,
-    bool? autopsyOutOfSystem,
-    String? autopsyCustomerFloor,
-    String? autopsyLatitude,
-    String? autopsyLongitude,
-    String? autopsyOrderNumber,
-    String? autopsyPilot,
-    String? autopsyStatus,
-    String? autopsyComments,
-    String? autopsyTtlp,
-    String? autopsyTtllpppTest,
-    String? buildingId,
-    String? autopsyCustomerName,
-    String? type,
-    String? adminAutopsyName,
     String? autopsyAdminLandline,
+    String? adminAutopsyName,
+    String? autopsyBid,
+    String? autopsybid,
+    String? autopsyCab,
+    String? autopsycab,
+    String? autopsyCategory,
+    String? autopsycategory,
+    String? autopsyOrderNumber,
+    String? autopsyordernumber,
+    String? autopsyPilot,
+    String? type,
+    String? autopsyStatus,
+    String? autopsystatus,
     String? technicalCheckStatus,
+    String? technicalcheckstatus,
     String? soilWorkStatus,
     String? constructionStatus,
     String? splicingStatus,
     String? billingStatus,
     String? malfunctionStatus,
+    String? autopsyComments,
+    String? autopsycomments,
+    String? autopsyOutOfSystem,
+    double? autopsyLatitude,
+    double? autopsyLongitude,
+    String? autopsyTtlp,
+    String? autopsyTtllpppTest,
+    String? buildingId,
   }) {
     return CAutopsy(
       id: id ?? this.id,
       name: name ?? this.name,
-      deleted: deleted ?? this.deleted,
+      displayName: displayName ?? this.displayName,
       description: description ?? this.description,
+      deleted: deleted ?? this.deleted,
       createdAt: createdAt ?? this.createdAt,
       modifiedAt: modifiedAt ?? this.modifiedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       createdById: createdById ?? this.createdById,
       modifiedById: modifiedById ?? this.modifiedById,
       assignedUserId: assignedUserId ?? this.assignedUserId,
       tenantId: tenantId ?? this.tenantId,
       streamUpdatedAt: streamUpdatedAt ?? this.streamUpdatedAt,
       versionNumber: versionNumber ?? this.versionNumber,
+      isDeleted: isDeleted ?? this.isDeleted,
       autopsyFullAddress: autopsyFullAddress ?? this.autopsyFullAddress,
       autopsyStreet: autopsyStreet ?? this.autopsyStreet,
       autopsyPostalCode: autopsyPostalCode ?? this.autopsyPostalCode,
       autopsyMunicipality: autopsyMunicipality ?? this.autopsyMunicipality,
       autopsyState: autopsyState ?? this.autopsyState,
       autopsyCity: autopsyCity ?? this.autopsyCity,
+      address1: address1 ?? this.address1,
+      address2: address2 ?? this.address2,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      postcode: postcode ?? this.postcode,
+      country: country ?? this.country,
+      autopsyCustomerName: autopsyCustomerName ?? this.autopsyCustomerName,
+      autopsycustomername: autopsycustomername ?? this.autopsycustomername,
+      autopsyCustomerEmail: autopsyCustomerEmail ?? this.autopsyCustomerEmail,
+      autopsycustomeremail: autopsycustomeremail ?? this.autopsycustomeremail,
+      autopsyCustomerMobile: autopsyCustomerMobile ?? this.autopsyCustomerMobile,
+      autopsycustomermobile: autopsycustomermobile ?? this.autopsycustomermobile,
+      autopsyCustomerFloor: autopsyCustomerFloor ?? this.autopsyCustomerFloor,
       autopsyAge: autopsyAge ?? this.autopsyAge,
       autopsyAk: autopsyAk ?? this.autopsyAk,
       autopsyAdminEmail: autopsyAdminEmail ?? this.autopsyAdminEmail,
       autopsyAdminMobile: autopsyAdminMobile ?? this.autopsyAdminMobile,
       autopsyLandlinePhoneNumber: autopsyLandlinePhoneNumber ?? this.autopsyLandlinePhoneNumber,
-      autopsyBid: autopsyBid ?? this.autopsyBid,
-      autopsyCab: autopsyCab ?? this.autopsyCab,
-      autopsyCategory: autopsyCategory ?? this.autopsyCategory,
-      autopsyCustomerEmail: autopsyCustomerEmail ?? this.autopsyCustomerEmail,
-      autopsyCustomerMobile: autopsyCustomerMobile ?? this.autopsyCustomerMobile,
-      autopsyOutOfSystem: autopsyOutOfSystem ?? this.autopsyOutOfSystem,
-      autopsyCustomerFloor: autopsyCustomerFloor ?? this.autopsyCustomerFloor,
-      autopsyLatitude: autopsyLatitude ?? this.autopsyLatitude,
-      autopsyLongitude: autopsyLongitude ?? this.autopsyLongitude,
-      autopsyOrderNumber: autopsyOrderNumber ?? this.autopsyOrderNumber,
-      autopsyPilot: autopsyPilot ?? this.autopsyPilot,
-      autopsyStatus: autopsyStatus ?? this.autopsyStatus,
-      autopsyComments: autopsyComments ?? this.autopsyComments,
-      autopsyTtlp: autopsyTtlp ?? this.autopsyTtlp,
-      autopsyTtllpppTest: autopsyTtllpppTest ?? this.autopsyTtllpppTest,
-      buildingId: buildingId ?? this.buildingId,
-      autopsyCustomerName: autopsyCustomerName ?? this.autopsyCustomerName,
-      type: type ?? this.type,
-      adminAutopsyName: adminAutopsyName ?? this.adminAutopsyName,
       autopsyAdminLandline: autopsyAdminLandline ?? this.autopsyAdminLandline,
+      adminAutopsyName: adminAutopsyName ?? this.adminAutopsyName,
+      autopsyBid: autopsyBid ?? this.autopsyBid,
+      autopsybid: autopsybid ?? this.autopsybid,
+      autopsyCab: autopsyCab ?? this.autopsyCab,
+      autopsycab: autopsycab ?? this.autopsycab,
+      autopsyCategory: autopsyCategory ?? this.autopsyCategory,
+      autopsycategory: autopsycategory ?? this.autopsycategory,
+      autopsyOrderNumber: autopsyOrderNumber ?? this.autopsyOrderNumber,
+      autopsyordernumber: autopsyordernumber ?? this.autopsyordernumber,
+      autopsyPilot: autopsyPilot ?? this.autopsyPilot,
+      type: type ?? this.type,
+      autopsyStatus: autopsyStatus ?? this.autopsyStatus,
+      autopsystatus: autopsystatus ?? this.autopsystatus,
       technicalCheckStatus: technicalCheckStatus ?? this.technicalCheckStatus,
+      technicalcheckstatus: technicalcheckstatus ?? this.technicalcheckstatus,
       soilWorkStatus: soilWorkStatus ?? this.soilWorkStatus,
       constructionStatus: constructionStatus ?? this.constructionStatus,
       splicingStatus: splicingStatus ?? this.splicingStatus,
       billingStatus: billingStatus ?? this.billingStatus,
       malfunctionStatus: malfunctionStatus ?? this.malfunctionStatus,
+      autopsyComments: autopsyComments ?? this.autopsyComments,
+      autopsycomments: autopsycomments ?? this.autopsycomments,
+      autopsyOutOfSystem: autopsyOutOfSystem ?? this.autopsyOutOfSystem,
+      autopsyLatitude: autopsyLatitude ?? this.autopsyLatitude,
+      autopsyLongitude: autopsyLongitude ?? this.autopsyLongitude,
+      autopsyTtlp: autopsyTtlp ?? this.autopsyTtlp,
+      autopsyTtllpppTest: autopsyTtllpppTest ?? this.autopsyTtllpppTest,
+      buildingId: buildingId ?? this.buildingId,
     );
   }
 }
 
-// Request Models
+// ============= RESPONSE MODELS =============
+
+@JsonSerializable()
+class AutopsyResponse {
+  final List<CAutopsy> data;
+  final int total;
+  final int? page;
+  final int? limit;
+  final int? offset;
+  final int? totalActive;
+  final int? totalDeleted;
+  final bool? permissionDenied;
+  final String? error;
+
+  AutopsyResponse({
+    required this.data,
+    required this.total,
+    this.page,
+    this.limit,
+    this.offset,
+    this.totalActive,
+    this.totalDeleted,
+    this.permissionDenied,
+    this.error,
+  });
+
+  factory AutopsyResponse.fromJson(Map<String, dynamic> json) => _$AutopsyResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$AutopsyResponseToJson(this);
+}
+
+@JsonSerializable()
+class AutopsyListResponse {
+  final List<CAutopsy> data;
+  final int total;
+  final int? page;
+  final int? limit;
+  final int? offset;
+  final bool? permissionDenied;
+  final String? error;
+
+  AutopsyListResponse({
+    required this.data,
+    required this.total,
+    this.page,
+    this.limit,
+    this.offset,
+    this.permissionDenied,
+    this.error,
+  });
+
+  factory AutopsyListResponse.fromJson(Map<String, dynamic> json) => _$AutopsyListResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$AutopsyListResponseToJson(this);
+}
+
+@JsonSerializable()
+class AutopsyDetailResponse {
+  final CAutopsy? data;
+  final bool? permissionDenied;
+  final String? error;
+
+  AutopsyDetailResponse({
+    this.data,
+    this.permissionDenied,
+    this.error,
+  });
+
+  factory AutopsyDetailResponse.fromJson(Map<String, dynamic> json) => _$AutopsyDetailResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$AutopsyDetailResponseToJson(this);
+}
+
+@JsonSerializable()
+class SingleAutopsyResponse {
+  final CAutopsy? data;
+  final bool? permissionDenied;
+  final String? error;
+
+  SingleAutopsyResponse({
+    this.data,
+    this.permissionDenied,
+    this.error,
+  });
+
+  factory SingleAutopsyResponse.fromJson(Map<String, dynamic> json) => _$SingleAutopsyResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$SingleAutopsyResponseToJson(this);
+}
+
+// ============= REQUEST MODELS =============
+
+@JsonSerializable()
+class ListAutopsyParams {
+  final int? limit;
+  final int? offset;
+  final String? orderBy;
+  final String? orderDirection;
+  final String? search;
+  final String? status;
+  final String? category;
+  final bool? includeDeleted;
+
+  ListAutopsyParams({
+    this.limit,
+    this.offset,
+    this.orderBy,
+    this.orderDirection,
+    this.search,
+    this.status,
+    this.category,
+    this.includeDeleted,
+  });
+
+  factory ListAutopsyParams.fromJson(Map<String, dynamic> json) => _$ListAutopsyParamsFromJson(json);
+  Map<String, dynamic> toJson() => _$ListAutopsyParamsToJson(this);
+}
+
+@JsonSerializable()
+class SearchAutopsyParams {
+  final String query;
+  final int? limit;
+  final int? offset;
+
+  SearchAutopsyParams({
+    required this.query,
+    this.limit,
+    this.offset,
+  });
+
+  factory SearchAutopsyParams.fromJson(Map<String, dynamic> json) => _$SearchAutopsyParamsFromJson(json);
+  Map<String, dynamic> toJson() => _$SearchAutopsyParamsToJson(this);
+}
+
 @JsonSerializable()
 class CreateAutopsyRequest {
   final String? name;
   final String? description;
-  @JsonKey(name: 'autopsyfulladdress')
+  final String? displayName;
   final String? autopsyFullAddress;
-  @JsonKey(name: 'autopsystreet')
   final String? autopsyStreet;
-  @JsonKey(name: 'autopsypostalcode')
   final String? autopsyPostalCode;
-  @JsonKey(name: 'autopsymunicipality')
   final String? autopsyMunicipality;
-  @JsonKey(name: 'autopsystate')
   final String? autopsyState;
-  @JsonKey(name: 'autopsycity')
   final String? autopsyCity;
-  @JsonKey(name: 'autopsycustomername')
   final String? autopsyCustomerName;
-  @JsonKey(name: 'autopsycustomeremail')
   final String? autopsyCustomerEmail;
-  @JsonKey(name: 'autopsycustomermobile')
   final String? autopsyCustomerMobile;
-  @JsonKey(name: 'autopsystatus')
   final String? autopsyStatus;
-  @JsonKey(name: 'autopsycategory')
   final String? autopsyCategory;
-  @JsonKey(name: 'autopsycomments')
   final String? autopsyComments;
-  @JsonKey(name: 'technicalcheckstatus')
   final String? technicalCheckStatus;
-  @JsonKey(name: 'assigned_user_id')
   final String? assignedUserId;
+  final String? address1;
+  final String? address2;
+  final String? city;
+  final String? state;
+  final String? postcode;
+  final String? country;
+  final String? autopsycustomername;
+  final String? autopsycustomeremail;
+  final String? autopsycustomermobile;
+  final String? autopsyordernumber;
+  final String? autopsybid;
+  final String? autopsycab;
+  final String? autopsystatus;
+  final String? autopsycategory;
+  final String? autopsycomments;
+  final String? technicalcheckstatus;
 
-  const CreateAutopsyRequest({
+  CreateAutopsyRequest({
     this.name,
     this.description,
+    this.displayName,
     this.autopsyFullAddress,
     this.autopsyStreet,
     this.autopsyPostalCode,
@@ -452,10 +519,25 @@ class CreateAutopsyRequest {
     this.autopsyComments,
     this.technicalCheckStatus,
     this.assignedUserId,
+    this.address1,
+    this.address2,
+    this.city,
+    this.state,
+    this.postcode,
+    this.country,
+    this.autopsycustomername,
+    this.autopsycustomeremail,
+    this.autopsycustomermobile,
+    this.autopsyordernumber,
+    this.autopsybid,
+    this.autopsycab,
+    this.autopsystatus,
+    this.autopsycategory,
+    this.autopsycomments,
+    this.technicalcheckstatus,
   });
 
-  factory CreateAutopsyRequest.fromJson(Map<String, dynamic> json) => 
-      _$CreateAutopsyRequestFromJson(json);
+  factory CreateAutopsyRequest.fromJson(Map<String, dynamic> json) => _$CreateAutopsyRequestFromJson(json);
   Map<String, dynamic> toJson() => _$CreateAutopsyRequestToJson(this);
 }
 
@@ -463,18 +545,30 @@ class CreateAutopsyRequest {
 class UpdateAutopsyRequest {
   final String? name;
   final String? description;
-  @JsonKey(name: 'autopsyfulladdress')
   final String? autopsyFullAddress;
-  @JsonKey(name: 'autopsystatus')
   final String? autopsyStatus;
-  @JsonKey(name: 'autopsycomments')
   final String? autopsyComments;
-  @JsonKey(name: 'technicalcheckstatus')
   final String? technicalCheckStatus;
-  @JsonKey(name: 'autopsycustomermobile')
   final String? autopsyCustomerMobile;
+  final String? displayName;
+  final String? autopsycustomername;
+  final String? autopsycustomeremail;
+  final String? autopsycustomermobile;
+  final String? autopsyordernumber;
+  final String? autopsybid;
+  final String? autopsycab;
+  final String? autopsystatus;
+  final String? autopsycategory;
+  final String? autopsycomments;
+  final String? technicalcheckstatus;
+  final String? address1;
+  final String? address2;
+  final String? city;
+  final String? state;
+  final String? postcode;
+  final String? country;
 
-  const UpdateAutopsyRequest({
+  UpdateAutopsyRequest({
     this.name,
     this.description,
     this.autopsyFullAddress,
@@ -482,82 +576,47 @@ class UpdateAutopsyRequest {
     this.autopsyComments,
     this.technicalCheckStatus,
     this.autopsyCustomerMobile,
+    this.displayName,
+    this.autopsycustomername,
+    this.autopsycustomeremail,
+    this.autopsycustomermobile,
+    this.autopsyordernumber,
+    this.autopsybid,
+    this.autopsycab,
+    this.autopsystatus,
+    this.autopsycategory,
+    this.autopsycomments,
+    this.technicalcheckstatus,
+    this.address1,
+    this.address2,
+    this.city,
+    this.state,
+    this.postcode,
+    this.country,
   });
 
-  factory UpdateAutopsyRequest.fromJson(Map<String, dynamic> json) => 
-      _$UpdateAutopsyRequestFromJson(json);
+  factory UpdateAutopsyRequest.fromJson(Map<String, dynamic> json) => _$UpdateAutopsyRequestFromJson(json);
   Map<String, dynamic> toJson() => _$UpdateAutopsyRequestToJson(this);
 }
 
-// FIXED: Single unified response model - use this everywhere
-@JsonSerializable()
-class AutopsyResponse {
-  final List<CAutopsy> data;
-  final int total;
-  final int limit;
-  final int offset;
-  @JsonKey(name: 'total_active')
-  final int? totalActive;
-  @JsonKey(name: 'total_deleted')
-  final int? totalDeleted;
+// ============= PERMISSION MODELS =============
 
-  const AutopsyResponse({
-    required this.data,
-    required this.total,
-    required this.limit,
-    required this.offset,
-    this.totalActive,
-    this.totalDeleted,
-  });
-
-  factory AutopsyResponse.fromJson(Map<String, dynamic> json) => 
-      _$AutopsyResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$AutopsyResponseToJson(this);
-}
-
-@JsonSerializable()
-class AutopsyDetailResponse {
-  final CAutopsy? data;
-  @JsonKey(name: 'permission_denied')
-  final bool? permissionDenied;
-
-  const AutopsyDetailResponse({
-    this.data,
-    this.permissionDenied,
-  });
-
-  factory AutopsyDetailResponse.fromJson(Map<String, dynamic> json) => 
-      _$AutopsyDetailResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$AutopsyDetailResponseToJson(this);
-}
-
-// Permissions Models
 @JsonSerializable()
 class AutopsyPermissions {
-  @JsonKey(name: 'can_create')
-  final bool canCreate;
-  @JsonKey(name: 'can_read')
   final bool canRead;
-  @JsonKey(name: 'can_edit')
+  final bool canCreate;
   final bool canEdit;
-  @JsonKey(name: 'can_delete')
   final bool canDelete;
-  @JsonKey(name: 'can_restore')
   final bool canRestore;
-  @JsonKey(name: 'can_permanent_delete')
   final bool canPermanentDelete;
-  @JsonKey(name: 'can_view_deleted')
   final bool canViewDeleted;
-  @JsonKey(name: 'visible_fields')
   final List<String> visibleFields;
-  @JsonKey(name: 'editable_fields')
   final List<String> editableFields;
-  @JsonKey(name: 'creatable_fields')
   final List<String> creatableFields;
 
-  const AutopsyPermissions({
-    required this.canCreate,
+  AutopsyPermissions({
     required this.canRead,
+    required this.canCreate,
     required this.canEdit,
     required this.canDelete,
     required this.canRestore,
@@ -568,288 +627,194 @@ class AutopsyPermissions {
     required this.creatableFields,
   });
 
-  factory AutopsyPermissions.fromJson(Map<String, dynamic> json) => 
-      _$AutopsyPermissionsFromJson(json);
+  factory AutopsyPermissions.fromJson(Map<String, dynamic> json) => _$AutopsyPermissionsFromJson(json);
   Map<String, dynamic> toJson() => _$AutopsyPermissionsToJson(this);
 
-  // Default permissions for fallback
-  factory AutopsyPermissions.defaultPermissions() {
-    return const AutopsyPermissions(
-      canCreate: false,
-      canRead: true,
-      canEdit: false,
-      canDelete: false,
-      canRestore: false,
-      canPermanentDelete: false,
-      canViewDeleted: false,
-      visibleFields: [],
-      editableFields: [],
-      creatableFields: [],
-    );
-  }
+  static AutopsyPermissions get defaultPermissions => AutopsyPermissions(
+    canRead: true,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+    canRestore: false,
+    canPermanentDelete: false,
+    canViewDeleted: false,
+    visibleFields: [],
+    editableFields: [],
+    creatableFields: [],
+  );
 }
 
 @JsonSerializable()
 class PermissionResponse {
-  final bool success;
-  final AutopsyPermissions permissions;
-  final bool? cached;
+  final AutopsyPermissions? data;
+  final String? error;
 
-  const PermissionResponse({
-    required this.success,
-    required this.permissions,
-    this.cached,
+  PermissionResponse({
+    this.data,
+    this.error,
   });
 
-  factory PermissionResponse.fromJson(Map<String, dynamic> json) => 
-      _$PermissionResponseFromJson(json);
+  factory PermissionResponse.fromJson(Map<String, dynamic> json) => _$PermissionResponseFromJson(json);
   Map<String, dynamic> toJson() => _$PermissionResponseToJson(this);
 }
 
-// Query Parameters
-class ListAutopsyParams {
-  final int? limit;
-  final int? offset;
-  final String? orderBy;
-  final String? orderDirection;
-  final String? search;
-  final String? status;
-  final String? category;
-  final bool? includeDeleted;
-  final bool? onlyDeleted;
-  final String? deletedBy;
-  final String? deletedAfter;
-  final String? deletedBefore;
+// ============= OPTION MODELS =============
 
-  const ListAutopsyParams({
-    this.limit,
-    this.offset,
-    this.orderBy,
-    this.orderDirection,
-    this.search,
-    this.status,
-    this.category,
-    this.includeDeleted,
-    this.onlyDeleted,
-    this.deletedBy,
-    this.deletedAfter,
-    this.deletedBefore,
-  });
-
-  Map<String, String> toQueryParams() {
-    final params = <String, String>{};
-    
-    if (limit != null) params['limit'] = limit.toString();
-    if (offset != null) params['offset'] = offset.toString();
-    if (orderBy != null) params['orderBy'] = orderBy!;
-    if (orderDirection != null) params['orderDirection'] = orderDirection!;
-    if (search != null) params['search'] = search!;
-    if (status != null) params['status'] = status!;
-    if (category != null) params['category'] = category!;
-    if (includeDeleted != null) params['includeDeleted'] = includeDeleted.toString();
-    if (onlyDeleted != null) params['onlyDeleted'] = onlyDeleted.toString();
-    if (deletedBy != null) params['deletedBy'] = deletedBy!;
-    if (deletedAfter != null) params['deletedAfter'] = deletedAfter!;
-    if (deletedBefore != null) params['deletedBefore'] = deletedBefore!;
-    
-    return params;
-  }
-
-  // Add pagination methods for compatibility
-  int get page => ((offset ?? 0) ~/ (limit ?? 20)) + 1;
-  int get pageSize => limit ?? 20;
-  
-  ListAutopsyParams copyWith({
-    int? limit,
-    int? offset,
-    String? orderBy,
-    String? orderDirection,
-    String? search,
-    String? status,
-    String? category,
-    bool? includeDeleted,
-    bool? onlyDeleted,
-    String? deletedBy,
-    String? deletedAfter,
-    String? deletedBefore,
-  }) {
-    return ListAutopsyParams(
-      limit: limit ?? this.limit,
-      offset: offset ?? this.offset,
-      orderBy: orderBy ?? this.orderBy,
-      orderDirection: orderDirection ?? this.orderDirection,
-      search: search ?? this.search,
-      status: status ?? this.status,
-      category: category ?? this.category,
-      includeDeleted: includeDeleted ?? this.includeDeleted,
-      onlyDeleted: onlyDeleted ?? this.onlyDeleted,
-      deletedBy: deletedBy ?? this.deletedBy,
-      deletedAfter: deletedAfter ?? this.deletedAfter,
-      deletedBefore: deletedBefore ?? this.deletedBefore,
-    );
-  }
-}
-
-class SearchAutopsyParams {
-  final String query;
-  final List<String>? fields;
-  final int? limit;
-  final bool? includeDeleted;
-
-  const SearchAutopsyParams({
-    required this.query,
-    this.fields,
-    this.limit,
-    this.includeDeleted,
-  });
-
-  Map<String, String> toQueryParams() {
-    final params = <String, String>{
-      'query': query,
-    };
-    
-    if (fields != null) params['fields'] = fields!.join(',');
-    if (limit != null) params['limit'] = limit.toString();
-    if (includeDeleted != null) params['includeDeleted'] = includeDeleted.toString();
-    
-    return params;
-  }
-}
-
-// Status and Category Options
+@JsonSerializable()
 class AutopsyStatusOption {
   final String value;
   final String label;
   final String? color;
-  final String? icon;
+  final int? order;
 
-  const AutopsyStatusOption({
+  AutopsyStatusOption({
     required this.value,
     required this.label,
     this.color,
-    this.icon,
+    this.order,
   });
+
+  factory AutopsyStatusOption.fromJson(Map<String, dynamic> json) => _$AutopsyStatusOptionFromJson(json);
+  Map<String, dynamic> toJson() => _$AutopsyStatusOptionToJson(this);
 }
 
+@JsonSerializable()
 class AutopsyCategoryOption {
   final String value;
   final String label;
+  final String? description;
+  final int? order;
 
-  const AutopsyCategoryOption({
+  AutopsyCategoryOption({
     required this.value,
     required this.label,
+    this.description,
+    this.order,
   });
+
+  factory AutopsyCategoryOption.fromJson(Map<String, dynamic> json) => _$AutopsyCategoryOptionFromJson(json);
+  Map<String, dynamic> toJson() => _$AutopsyCategoryOptionToJson(this);
 }
 
-// Static Options
+// ============= OPTIONS HELPER CLASS =============
+
 class AutopsyOptions {
-  static const List<AutopsyStatusOption> statusOptions = [
-    AutopsyStatusOption(value: 'new', label: 'Νέο', color: 'blue'),
-    AutopsyStatusOption(value: 'autopsy_scheduled', label: 'Προγραμματισμένο', color: 'orange'),
-    AutopsyStatusOption(value: 'autopsy_in_progress', label: 'Σε εξέλιξη', color: 'yellow'),
-    AutopsyStatusOption(value: 'autopsy_completed', label: 'Ολοκληρωμένο', color: 'green'),
-    AutopsyStatusOption(value: 'technical_check_pending', label: 'Εκκρεμεί έλεγχος', color: 'purple'),
-    AutopsyStatusOption(value: 'technical_check_rejected', label: 'Απορρίφθηκε', color: 'red'),
-    AutopsyStatusOption(value: 'technical_check_approved', label: 'Εγκρίθηκε', color: 'green'),
-    AutopsyStatusOption(value: 'work_orders_created', label: 'Εντολές εργασίας', color: 'indigo'),
-    AutopsyStatusOption(value: 'job_completed', label: 'Ολοκληρώθηκε', color: 'green'),
-    AutopsyStatusOption(value: 'job_cancelled', label: 'Ακυρώθηκε', color: 'gray'),
+  static final List<AutopsyStatusOption> statusOptions = [
+    AutopsyStatusOption(value: 'new', label: 'New', color: '#2196F3', order: 1),
+    AutopsyStatusOption(value: 'autopsy_scheduled', label: 'Autopsy Scheduled', color: '#FF9800', order: 2),
+    AutopsyStatusOption(value: 'autopsy_in_progress', label: 'Autopsy In Progress', color: '#FFC107', order: 3),
+    AutopsyStatusOption(value: 'autopsy_completed', label: 'Autopsy Completed', color: '#4CAF50', order: 4),
+    AutopsyStatusOption(value: 'technical_check_pending', label: 'Technical Check Pending', color: '#9C27B0', order: 5),
+    AutopsyStatusOption(value: 'technical_check_rejected', label: 'Technical Check Rejected', color: '#F44336', order: 6),
+    AutopsyStatusOption(value: 'technical_check_approved', label: 'Technical Check Approved', color: '#4CAF50', order: 7),
+    AutopsyStatusOption(value: 'work_orders_created', label: 'Work Orders Created', color: '#3F51B5', order: 8),
+    AutopsyStatusOption(value: 'job_completed', label: 'Job Completed', color: '#4CAF50', order: 9),
+    AutopsyStatusOption(value: 'job_cancelled', label: 'Job Cancelled', color: '#9E9E9E', order: 10),
   ];
 
-  static const List<AutopsyCategoryOption> categoryOptions = [
-    AutopsyCategoryOption(value: 'FTTH Retail', label: 'FTTH Retail'),
-    AutopsyCategoryOption(value: 'FTTH Business', label: 'FTTH Business'),
-    AutopsyCategoryOption(value: 'VDSL', label: 'VDSL'),
-    AutopsyCategoryOption(value: 'ADSL', label: 'ADSL'),
-    AutopsyCategoryOption(value: 'Other', label: 'Άλλο'),
+  static final List<AutopsyCategoryOption> categoryOptions = [
+    AutopsyCategoryOption(value: 'residential', label: 'Residential', order: 1),
+    AutopsyCategoryOption(value: 'commercial', label: 'Commercial', order: 2),
+    AutopsyCategoryOption(value: 'industrial', label: 'Industrial', order: 3),
+    AutopsyCategoryOption(value: 'emergency', label: 'Emergency', order: 4),
+    AutopsyCategoryOption(value: 'maintenance', label: 'Maintenance', order: 5),
   ];
 
-  static AutopsyStatusOption? getStatusOption(String status) {
+  static String? getStatusLabel(String? status) {
+    if (status == null) return null;
     try {
-      return statusOptions.firstWhere((option) => option.value == status);
+      return statusOptions.firstWhere((option) => option.value == status).label;
     } catch (_) {
-      return null;
+      return status;
     }
   }
 
-  static AutopsyCategoryOption? getCategoryOption(String category) {
+  static String? getCategoryLabel(String? category) {
+    if (category == null) return null;
     try {
-      return categoryOptions.firstWhere((option) => option.value == category);
+      return categoryOptions.firstWhere((option) => option.value == category).label;
     } catch (_) {
-      return null;
+      return category;
+    }
+  }
+
+  static String? getStatusColor(String? status) {
+    if (status == null) return null;
+    try {
+      return statusOptions.firstWhere((option) => option.value == status).color;
+    } catch (_) {
+      return '#9E9E9E';
     }
   }
 }
 
-// Exception Classes
+// ============= EXCEPTION MODELS =============
+
 class AutopsyException implements Exception {
   final String message;
-  final int? statusCode;
+  final String? code;
   final dynamic originalError;
-  final Map<String, dynamic>? details;
 
-  const AutopsyException({
+  AutopsyException({
     required this.message,
-    this.statusCode,
+    this.code,
     this.originalError,
-    this.details,
   });
 
   @override
   String toString() => 'AutopsyException: $message';
 }
 
-class AutopsyPermissionException extends AutopsyException {
-  const AutopsyPermissionException({
-    required super.message,
-    super.statusCode,
-    super.originalError,
-    super.details,
-  });
-
-  @override
-  String toString() => 'AutopsyPermissionException: $message';
-}
-
 class AutopsyNotFoundException extends AutopsyException {
-  const AutopsyNotFoundException({
-    required super.message,
-    super.statusCode,
-    super.originalError,
-    super.details,
-  });
-
-  @override
-  String toString() => 'AutopsyNotFoundException: $message';
+  AutopsyNotFoundException({
+    required String message,
+    String? code,
+    dynamic originalError,
+  }) : super(
+          message: message,
+          code: code ?? 'not_found',
+          originalError: originalError,
+        );
 }
 
-class AutopsyDataException extends AutopsyException {
-  final String? fieldName;
-  final dynamic receivedValue;
-  final Type? expectedType;
-
-  const AutopsyDataException({
-    required super.message,
-    super.statusCode,
-    super.originalError,
-    super.details,
-    this.fieldName,
-    this.receivedValue,
-    this.expectedType,
-  });
-
-  @override
-  String toString() => 'AutopsyDataException: $message';
+class AutopsyPermissionException extends AutopsyException {
+  AutopsyPermissionException({
+    required String message,
+    String? code,
+    dynamic originalError,
+  }) : super(
+          message: message,
+          code: code ?? 'permission_denied',
+          originalError: originalError,
+        );
 }
 
-// FIXED: Remove the duplicate ListAutopsyResponse - use AutopsyResponse everywhere
-// If you need a simplified version, create a helper method like:
-extension AutopsyResponseExtensions on AutopsyResponse {
-  /// Convert to simplified list response format
-  Map<String, dynamic> toSimpleResponse() {
-    return {
-      'data': data.map((e) => e.toJson()).toList(),
-      'total': total,
-    };
-  }
+class AutopsyValidationException extends AutopsyException {
+  final Map<String, List<String>>? fieldErrors;
+
+  AutopsyValidationException({
+    required String message,
+    this.fieldErrors,
+    String? code,
+    dynamic originalError,
+  }) : super(
+          message: message,
+          code: code ?? 'validation_error',
+          originalError: originalError,
+        );
+}
+
+class AutopsyNetworkException extends AutopsyException {
+  final int? statusCode;
+
+  AutopsyNetworkException({
+    required String message,
+    this.statusCode,
+    String? code,
+    dynamic originalError,
+  }) : super(
+          message: message,
+          code: code ?? 'network_error',
+          originalError: originalError,
+        );
 }

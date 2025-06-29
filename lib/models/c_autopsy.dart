@@ -1,6 +1,6 @@
 // lib/models/c_autopsy.dart - Ultra-safe version with no direct casts
 
-import 'package:fieldx_fsm/models/autopsy_exceptions123.dart';
+import 'package:fieldx_fsm/models/autopsy_models.dart';
 
 class CAutopsy {
   final String id;

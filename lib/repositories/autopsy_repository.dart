@@ -5,8 +5,6 @@ import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import '../models/autopsy_models.dart';
 import '../services/autopsy_client.dart';
-// Add the following import if AutopsyResponse is defined elsewhere:
-import '../models/autopsy_models.dart';
 
 /// State management and business logic for autopsies
 class AutopsyRepository extends ChangeNotifier {
@@ -18,6 +16,7 @@ class AutopsyRepository extends ChangeNotifier {
   bool _isLoadingMore = false;
   String? _error;
   int _currentPage = 1;
+  // ignore: prefer_final_fields
   int _pageSize = 20;
   int _totalCount = 0;
   bool _hasMore = true;
@@ -73,74 +72,72 @@ class AutopsyRepository extends ChangeNotifier {
   // ============= LIST OPERATIONS =============
 
   /// Load initial autopsy list
-Future<void> loadAutopsies({
-  bool refresh = false,
-  String? search,
-  String? status,
-  String? category,
-}) async {
-  if (_isLoading && !refresh) return;
+  Future<void> loadAutopsies({
+    bool refresh = false,
+    String? search,
+    String? status,
+    String? category,
+  }) async {
+    if (_isLoading && !refresh) return;
 
-  try {
-    _setLoading(true);
-    _setError(null);
+    try {
+      _setLoading(true);
+      _setError(null);
 
-    // Update filters if provided
-    if (search != _searchQuery || 
-        status != _statusFilter || 
-        category != _categoryFilter) {
-      _searchQuery = search;
-      _statusFilter = status;
-      _categoryFilter = category;
-      _currentPage = 1;
-      if (!refresh) _autopsies.clear();
+      // Update filters if provided
+      if (search != _searchQuery || 
+          status != _statusFilter || 
+          category != _categoryFilter) {
+        _searchQuery = search;
+        _statusFilter = status;
+        _categoryFilter = category;
+        _currentPage = 1;
+        if (!refresh) _autopsies.clear();
+      }
+
+      final params = ListAutopsyParams(
+        limit: _pageSize,
+        offset: refresh ? 0 : (_currentPage - 1) * _pageSize,
+        orderBy: 'modified_at',
+        orderDirection: 'DESC',
+        search: _searchQuery,
+        status: _statusFilter,
+        category: _categoryFilter,
+      );
+
+      final AutopsyResponse response = await _client.listAutopsies(params);
+      
+      if (response.data.isEmpty && _currentPage > 1) {
+        // No more data available, reset pagination
+        _currentPage--;
+        _hasMore = false;
+      }
+      
+      if (refresh || _currentPage == 1) {
+        _autopsies = response.data;
+      } else {
+        _autopsies.addAll(response.data);
+      }
+
+      _totalCount = response.total;
+      _hasMore = _autopsies.length < _totalCount;
+      
+      if (refresh) _currentPage = 1;
+
+      _debugLog('✅ Loaded autopsies', {
+        'count': response.data.length,
+        'total': _totalCount,
+        'page': _currentPage,
+        'hasMore': _hasMore,
+      });
+
+    } catch (error) {
+      _setError('Failed to load autopsies: ${error.toString()}');
+      _debugLog('❌ Failed to load autopsies', error);
+    } finally {
+      _setLoading(false);
     }
-
-    final params = ListAutopsyParams(
-      limit: _pageSize,
-      offset: refresh ? 0 : (_currentPage - 1) * _pageSize,
-      orderBy: 'modified_at',
-      orderDirection: 'DESC',
-      search: _searchQuery,
-      status: _statusFilter,
-      category: _categoryFilter,
-    );
-
-    // FIX: Use AutopsyResponse instead of ListAutopsyResponse
-    final AutopsyResponse response = await _client.listAutopsies(params);
-    
-    if (response.data.isEmpty && _currentPage > 1) {
-      // No more data available, reset pagination
-      _currentPage--;
-      _hasMore = false;
-    }
-    
-    if (refresh || _currentPage == 1) {
-      _autopsies = response.data;
-    } else {
-      _autopsies.addAll(response.data);
-    }
-
-    _totalCount = response.total;
-    _hasMore = _autopsies.length < _totalCount;
-    
-    if (refresh) _currentPage = 1;
-
-    _debugLog('✅ Loaded autopsies', {
-      'count': response.data.length,
-      'total': _totalCount,
-      'page': _currentPage,
-      'hasMore': _hasMore,
-    });
-
-  } catch (error) {
-    _setError('Failed to load autopsies: ${error.toString()}');
-    _debugLog('❌ Failed to load autopsies', error);
-  } finally {
-    _setLoading(false);
   }
-}
-
 
   /// Load more autopsies (pagination)
   Future<void> loadMoreAutopsies() async {
@@ -162,7 +159,7 @@ Future<void> loadAutopsies({
         category: _categoryFilter,
       );
 
-      final AutopsyResponse response = await _client.listAutopsies(params) as AutopsyResponse;
+      final AutopsyResponse response = await _client.listAutopsies(params);
       
       _autopsies.addAll(response.data);
       _hasMore = _autopsies.length < response.total;
@@ -422,7 +419,7 @@ Future<void> loadAutopsies({
     } catch (error) {
       _debugLog('❌ Failed to load permissions', error);
       // Set default permissions on error
-      _permissions = AutopsyPermissions.defaultPermissions();
+      _permissions = AutopsyPermissions.defaultPermissions;
       _permissionsLoadedAt = DateTime.now();
       notifyListeners();
     }
@@ -611,44 +608,44 @@ Future<void> loadAutopsies({
     notifyListeners();
   }
 
-void _debugLog(String message, [dynamic data]) {
-  if (kDebugMode) {
-    try {
-      String? dataString;
-      if (data != null) {
-        if (data is String) {
-          dataString = data;
-        } else if (data is Map || data is List) {
-          try {
-            dataString = jsonEncode(data);
-          } catch (e) {
-            // If JSON encoding fails, use toString
+  void _debugLog(String message, [dynamic data]) {
+    if (kDebugMode) {
+      try {
+        String? dataString;
+        if (data != null) {
+          if (data is String) {
+            dataString = data;
+          } else if (data is Map || data is List) {
+            try {
+              dataString = jsonEncode(data);
+            } catch (e) {
+              // If JSON encoding fails, use toString
+              dataString = data.toString();
+            }
+          } else {
             dataString = data.toString();
           }
-        } else {
-          dataString = data.toString();
         }
+        
+        developer.log(
+          message,
+          name: 'AutopsyRepository',
+          error: dataString,
+        );
+      } catch (e) {
+        // Fallback logging without data if everything fails
+        developer.log(
+          '$message (debug data failed to serialize)',
+          name: 'AutopsyRepository',
+        );
       }
-      
-      developer.log(
-        message,
-        name: 'AutopsyRepository',
-        error: dataString,
-      );
-    } catch (e) {
-      // Fallback logging without data if everything fails
-      developer.log(
-        '$message (debug data failed to serialize)',
-        name: 'AutopsyRepository',
-      );
     }
   }
-}
 
   // ============= CACHE MANAGEMENT =============
 
   /// Clear all caches
- void clearCaches() {
+  void clearCaches() {
     _detailCache.clear();
     _loadingDetails.clear();
     _selectedItems.clear();
@@ -696,7 +693,6 @@ void _debugLog(String message, [dynamic data]) {
     };
   }
   
-
   @override
   void dispose() {
     clearCaches();

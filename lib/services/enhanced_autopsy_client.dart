@@ -1,26 +1,26 @@
-// lib/services/autopsy_client.dart
+// lib/services/enhanced_autopsy_client.dart
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/autopsy_models.dart';
 
-class AutopsyClient {
-  late final Dio _dio;
-  final String baseUrl;
-  final Duration defaultTimeout;
+class EnhancedAutopsyClient {
+  static EnhancedAutopsyClient? _instance;
+  static EnhancedAutopsyClient get instance => _instance ??= EnhancedAutopsyClient._internal();
 
-  AutopsyClient({
-    required this.baseUrl,
-    this.defaultTimeout = const Duration(seconds: 30),
-    Map<String, dynamic>? defaultHeaders,
-  }) {
+  late final Dio _dio;
+  final Duration _defaultTimeout = const Duration(seconds: 30);
+  
+  // Private constructor
+  EnhancedAutopsyClient._internal();
+
+  void initialize(String baseUrl, {Map<String, dynamic>? defaultHeaders}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: defaultTimeout,
-      receiveTimeout: defaultTimeout,
-      sendTimeout: defaultTimeout,
+      connectTimeout: _defaultTimeout,
+      receiveTimeout: _defaultTimeout,
+      sendTimeout: _defaultTimeout,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -36,7 +36,7 @@ class AutopsyClient {
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
         responseBody: true,
-        logPrint: (object) => developer.log(object.toString(), name: 'AutopsyClient'),
+        logPrint: (object) => developer.log(object.toString(), name: 'EnhancedAutopsyClient'),
       ));
     }
 
@@ -56,27 +56,50 @@ class AutopsyClient {
 
   // ============= LIST OPERATIONS =============
 
-  Future<AutopsyResponse> listAutopsies(ListAutopsyParams params) async {
+  Future<AutopsyListResponse> listAutopsies({
+    int? limit,
+    int? offset,
+    String? search,
+    String? status,
+    String? category,
+    String? orderBy,
+    String? orderDirection,
+  }) async {
     try {
+      final queryParams = <String, dynamic>{};
+      if (limit != null) queryParams['limit'] = limit;
+      if (offset != null) queryParams['offset'] = offset;
+      if (search != null) queryParams['search'] = search;
+      if (status != null) queryParams['status'] = status;
+      if (category != null) queryParams['category'] = category;
+      if (orderBy != null) queryParams['orderBy'] = orderBy;
+      if (orderDirection != null) queryParams['orderDirection'] = orderDirection;
+
       final response = await _dio.get(
         '/api/autopsies',
-        queryParameters: params.toJson()..removeWhere((key, value) => value == null),
+        queryParameters: queryParams,
       );
 
-      return AutopsyResponse.fromJson(response.data);
+      return AutopsyListResponse.fromJson(response.data);
     } catch (error) {
       throw _handleError(error, 'Failed to list autopsies');
     }
   }
 
-  Future<AutopsyResponse> searchAutopsies(SearchAutopsyParams params) async {
+  Future<AutopsyListResponse> searchAutopsies(String query, {int? limit, int? offset}) async {
     try {
+      final queryParams = <String, dynamic>{
+        'query': query,
+      };
+      if (limit != null) queryParams['limit'] = limit;
+      if (offset != null) queryParams['offset'] = offset;
+
       final response = await _dio.get(
         '/api/autopsies/search',
-        queryParameters: params.toJson()..removeWhere((key, value) => value == null),
+        queryParameters: queryParams,
       );
 
-      return AutopsyResponse.fromJson(response.data);
+      return AutopsyListResponse.fromJson(response.data);
     } catch (error) {
       throw _handleError(error, 'Failed to search autopsies');
     }
@@ -84,10 +107,10 @@ class AutopsyClient {
 
   // ============= DETAIL OPERATIONS =============
 
-  Future<SingleAutopsyResponse> getAutopsy(String id) async {
+  Future<AutopsyDetailResponse> getAutopsy(String id) async {
     try {
       final response = await _dio.get('/api/autopsies/$id');
-      return SingleAutopsyResponse.fromJson(response.data);
+      return AutopsyDetailResponse.fromJson(response.data);
     } catch (error) {
       if (error is DioException && error.response?.statusCode == 404) {
         throw AutopsyNotFoundException(message: 'Autopsy not found');
@@ -98,28 +121,52 @@ class AutopsyClient {
     }
   }
 
-  Future<CAutopsy> createAutopsy(CreateAutopsyRequest request) async {
+  Future<AutopsyDetailResponse> createAutopsy(CreateAutopsyRequest request) async {
     try {
       final response = await _dio.post(
         '/api/autopsies',
         data: request.toJson(),
       );
 
-      return CAutopsy.fromJson(response.data['data']);
+      return AutopsyDetailResponse.fromJson(response.data);
     } catch (error) {
+      if (error is DioException && error.response?.statusCode == 422) {
+        throw AutopsyValidationException(
+          message: 'Validation failed',
+          originalError: error,
+        );
+      } else if (error is DioException && error.response?.statusCode == 403) {
+        throw AutopsyPermissionException(
+          message: 'Permission denied to create autopsy',
+        );
+      }
       throw _handleError(error, 'Failed to create autopsy');
     }
   }
 
-  Future<CAutopsy> updateAutopsy(String id, UpdateAutopsyRequest request) async {
+  Future<AutopsyDetailResponse> updateAutopsy(String id, UpdateAutopsyRequest request) async {
     try {
       final response = await _dio.put(
         '/api/autopsies/$id',
         data: request.toJson(),
       );
 
-      return CAutopsy.fromJson(response.data['data']);
+      return AutopsyDetailResponse.fromJson(response.data);
     } catch (error) {
+      if (error is DioException && error.response?.statusCode == 422) {
+        throw AutopsyValidationException(
+          message: 'Validation failed',
+          originalError: error,
+        );
+      } else if (error is DioException && error.response?.statusCode == 403) {
+        throw AutopsyPermissionException(
+          message: 'Permission denied to update autopsy',
+        );
+      } else if (error is DioException && error.response?.statusCode == 404) {
+        throw AutopsyNotFoundException(
+          message: 'Autopsy not found',
+        );
+      }
       throw _handleError(error, 'Failed to update autopsy');
     }
   }
@@ -128,25 +175,43 @@ class AutopsyClient {
     try {
       await _dio.delete('/api/autopsies/$id');
     } catch (error) {
+      if (error is DioException && error.response?.statusCode == 403) {
+        throw AutopsyPermissionException(
+          message: 'Permission denied to delete autopsy',
+        );
+      } else if (error is DioException && error.response?.statusCode == 404) {
+        throw AutopsyNotFoundException(
+          message: 'Autopsy not found',
+        );
+      }
       throw _handleError(error, 'Failed to delete autopsy');
     }
   }
 
-  Future<CAutopsy> restoreAutopsy(String id) async {
+  Future<AutopsyDetailResponse> restoreAutopsy(String id) async {
     try {
       final response = await _dio.post('/api/autopsies/$id/restore');
-      return CAutopsy.fromJson(response.data['data']);
+      return AutopsyDetailResponse.fromJson(response.data);
     } catch (error) {
+      if (error is DioException && error.response?.statusCode == 403) {
+        throw AutopsyPermissionException(
+          message: 'Permission denied to restore autopsy',
+        );
+      } else if (error is DioException && error.response?.statusCode == 404) {
+        throw AutopsyNotFoundException(
+          message: 'Autopsy not found',
+        );
+      }
       throw _handleError(error, 'Failed to restore autopsy');
     }
   }
 
   // ============= PERMISSION OPERATIONS =============
 
-  Future<AutopsyPermissions> getPermissions() async {
+  Future<PermissionResponse> getPermissions() async {
     try {
       final response = await _dio.get('/api/autopsies/permissions');
-      return AutopsyPermissions.fromJson(response.data['data']);
+      return PermissionResponse.fromJson(response.data);
     } catch (error) {
       throw _handleError(error, 'Failed to get permissions');
     }
@@ -171,32 +236,11 @@ class AutopsyClient {
   }
 
   String getAutopsyDisplayName(CAutopsy autopsy) {
-    if (autopsy.displayName?.isNotEmpty == true) {
-      return autopsy.displayName!;
-    }
-    
-    if (autopsy.autopsycustomername?.isNotEmpty == true) {
-      return autopsy.autopsycustomername!;
-    }
-    
-    if (autopsy.autopsyordernumber?.isNotEmpty == true) {
-      return 'Order: ${autopsy.autopsyordernumber}';
-    }
-    
-    return 'Autopsy ${autopsy.id}';
+    return autopsy.effectiveDisplayName;
   }
 
   String? getFormattedAddress(CAutopsy autopsy) {
-    final parts = <String>[];
-    
-    if (autopsy.address1?.isNotEmpty == true) parts.add(autopsy.address1!);
-    if (autopsy.address2?.isNotEmpty == true) parts.add(autopsy.address2!);
-    if (autopsy.city?.isNotEmpty == true) parts.add(autopsy.city!);
-    if (autopsy.state?.isNotEmpty == true) parts.add(autopsy.state!);
-    if (autopsy.postcode?.isNotEmpty == true) parts.add(autopsy.postcode!);
-    if (autopsy.country?.isNotEmpty == true) parts.add(autopsy.country!);
-    
-    return parts.isEmpty ? null : parts.join(', ');
+    return autopsy.fullAddress.isEmpty ? null : autopsy.fullAddress;
   }
 
   // ============= AUTHENTICATION =============

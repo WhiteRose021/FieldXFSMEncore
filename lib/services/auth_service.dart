@@ -4,23 +4,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'authentication_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService extends ChangeNotifier {
-  final AuthenticationService _authenticationService;
   bool _isAuthenticated = false;
   String? _currentUser;
   String? _authToken;
 
-  AuthService({required AuthenticationService authenticationService})
-      : _authenticationService = authenticationService;
+  AuthService({required AuthenticationService authenticationService});
 
   // Getters
   bool get isAuthenticated => _isAuthenticated;
   String? get currentUser => _currentUser;
   String? get authToken => _authToken;
 
-  get currentUsername => null;
+  Null get currentUsername => null;
 
   Future<bool> authenticate(String username, String password) async {
   try {

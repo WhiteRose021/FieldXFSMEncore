@@ -9,177 +9,151 @@ part of 'autopsy_models.dart';
 CAutopsy _$CAutopsyFromJson(Map<String, dynamic> json) => CAutopsy(
       id: json['id'] as String,
       name: json['name'] as String?,
-      deleted: json['deleted'] as bool?,
+      displayName: json['displayName'] as String?,
       description: json['description'] as String?,
-      createdAt: json['created_at'] == null
+      deleted: json['deleted'] as bool?,
+      createdAt: json['createdAt'] == null
           ? null
-          : DateTime.parse(json['created_at'] as String),
-      modifiedAt: json['modified_at'] == null
+          : DateTime.parse(json['createdAt'] as String),
+      modifiedAt: json['modifiedAt'] == null
           ? null
-          : DateTime.parse(json['modified_at'] as String),
-      createdById: json['created_by_id'] as String?,
-      modifiedById: json['modified_by_id'] as String?,
-      assignedUserId: json['assigned_user_id'] as String?,
-      tenantId: json['tenant_id'] as String?,
-      streamUpdatedAt: json['stream_updated_at'] == null
+          : DateTime.parse(json['modifiedAt'] as String),
+      deletedAt: json['deletedAt'] == null
           ? null
-          : DateTime.parse(json['stream_updated_at'] as String),
-      versionNumber: (json['version_number'] as num?)?.toInt(),
-      autopsyFullAddress: json['autopsyfulladdress'] as String?,
-      autopsyStreet: json['autopsystreet'] as String?,
-      autopsyPostalCode: json['autopsypostalcode'] as String?,
-      autopsyMunicipality: json['autopsymunicipality'] as String?,
-      autopsyState: json['autopsystate'] as String?,
-      autopsyCity: json['autopsycity'] as String?,
-      autopsyAge: json['autopsyage'] as String?,
-      autopsyAk: json['autopsyak'] as String?,
-      autopsyAdminEmail: json['autopsyadminemail'] as String?,
-      autopsyAdminMobile: json['autopsyadminmobile'] as String?,
-      autopsyLandlinePhoneNumber: json['autopsylandlinephonenumber'] as String?,
-      autopsyBid: json['autopsybid'] as String?,
-      autopsyCab: json['autopsycab'] as String?,
-      autopsyCategory: json['autopsycategory'] as String?,
-      autopsyCustomerEmail: json['autopsycustomeremail'] as String?,
-      autopsyCustomerMobile: json['autopsycustomermobile'] as String?,
-      autopsyOutOfSystem: json['autopsyoutofsystem'] as bool?,
-      autopsyCustomerFloor: json['autopsycustomerfloor'] as String?,
-      autopsyLatitude: json['autopsylatitude'] as String?,
-      autopsyLongitude: json['autopsylongtitude'] as String?,
-      autopsyOrderNumber: json['autopsyordernumber'] as String?,
-      autopsyPilot: json['autopsypilot'] as String?,
-      autopsyStatus: json['autopsystatus'] as String?,
-      autopsyComments: json['autopsycomments'] as String?,
-      autopsyTtlp: json['autopsyttlp'] as String?,
-      autopsyTtllpppTest: json['autopsyttllppptest'] as String?,
-      buildingId: json['building_id'] as String?,
-      autopsyCustomerName: json['autopsycustomername'] as String?,
+          : DateTime.parse(json['deletedAt'] as String),
+      createdById: json['createdById'] as String?,
+      modifiedById: json['modifiedById'] as String?,
+      assignedUserId: json['assignedUserId'] as String?,
+      tenantId: json['tenantId'] as String?,
+      streamUpdatedAt: json['streamUpdatedAt'] == null
+          ? null
+          : DateTime.parse(json['streamUpdatedAt'] as String),
+      versionNumber: (json['versionNumber'] as num?)?.toInt(),
+      isDeleted: json['isDeleted'] as bool?,
+      autopsyFullAddress: json['autopsyFullAddress'] as String?,
+      autopsyStreet: json['autopsyStreet'] as String?,
+      autopsyPostalCode: json['autopsyPostalCode'] as String?,
+      autopsyMunicipality: json['autopsyMunicipality'] as String?,
+      autopsyState: json['autopsyState'] as String?,
+      autopsyCity: json['autopsyCity'] as String?,
+      address1: json['address1'] as String?,
+      address2: json['address2'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      postcode: json['postcode'] as String?,
+      country: json['country'] as String?,
+      autopsyCustomerName: json['autopsyCustomerName'] as String?,
+      autopsycustomername: json['autopsycustomername'] as String?,
+      autopsyCustomerEmail: json['autopsyCustomerEmail'] as String?,
+      autopsycustomeremail: json['autopsycustomeremail'] as String?,
+      autopsyCustomerMobile: json['autopsyCustomerMobile'] as String?,
+      autopsycustomermobile: json['autopsycustomermobile'] as String?,
+      autopsyCustomerFloor: json['autopsyCustomerFloor'] as String?,
+      autopsyAge: json['autopsyAge'] as String?,
+      autopsyAk: json['autopsyAk'] as String?,
+      autopsyAdminEmail: json['autopsyAdminEmail'] as String?,
+      autopsyAdminMobile: json['autopsyAdminMobile'] as String?,
+      autopsyLandlinePhoneNumber: json['autopsyLandlinePhoneNumber'] as String?,
+      autopsyAdminLandline: json['autopsyAdminLandline'] as String?,
+      adminAutopsyName: json['adminAutopsyName'] as String?,
+      autopsyBid: json['autopsyBid'] as String?,
+      autopsybid: json['autopsybid'] as String?,
+      autopsyCab: json['autopsyCab'] as String?,
+      autopsycab: json['autopsycab'] as String?,
+      autopsyCategory: json['autopsyCategory'] as String?,
+      autopsycategory: json['autopsycategory'] as String?,
+      autopsyOrderNumber: json['autopsyOrderNumber'] as String?,
+      autopsyordernumber: json['autopsyordernumber'] as String?,
+      autopsyPilot: json['autopsyPilot'] as String?,
       type: json['type'] as String?,
-      adminAutopsyName: json['adminautopsyname'] as String?,
-      autopsyAdminLandline: json['autopsyadminlandline'] as String?,
-      technicalCheckStatus: json['technicalcheckstatus'] as String?,
-      soilWorkStatus: json['soilworkstatus'] as String?,
-      constructionStatus: json['constructionstatus'] as String?,
-      splicingStatus: json['splicingstatus'] as String?,
-      billingStatus: json['billingstatus'] as String?,
-      malfunctionStatus: json['malfunctionstatus'] as String?,
+      autopsyStatus: json['autopsyStatus'] as String?,
+      autopsystatus: json['autopsystatus'] as String?,
+      technicalCheckStatus: json['technicalCheckStatus'] as String?,
+      technicalcheckstatus: json['technicalcheckstatus'] as String?,
+      soilWorkStatus: json['soilWorkStatus'] as String?,
+      constructionStatus: json['constructionStatus'] as String?,
+      splicingStatus: json['splicingStatus'] as String?,
+      billingStatus: json['billingStatus'] as String?,
+      malfunctionStatus: json['malfunctionStatus'] as String?,
+      autopsyComments: json['autopsyComments'] as String?,
+      autopsycomments: json['autopsycomments'] as String?,
+      autopsyOutOfSystem: json['autopsyOutOfSystem'] as String?,
+      autopsyLatitude: (json['autopsyLatitude'] as num?)?.toDouble(),
+      autopsyLongitude: (json['autopsyLongitude'] as num?)?.toDouble(),
+      autopsyTtlp: json['autopsyTtlp'] as String?,
+      autopsyTtllpppTest: json['autopsyTtllpppTest'] as String?,
+      buildingId: json['buildingId'] as String?,
     );
 
 Map<String, dynamic> _$CAutopsyToJson(CAutopsy instance) => <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
+      'displayName': instance.displayName,
+      'description': instance.description,
       'deleted': instance.deleted,
-      'description': instance.description,
-      'created_at': instance.createdAt?.toIso8601String(),
-      'modified_at': instance.modifiedAt?.toIso8601String(),
-      'created_by_id': instance.createdById,
-      'modified_by_id': instance.modifiedById,
-      'assigned_user_id': instance.assignedUserId,
-      'tenant_id': instance.tenantId,
-      'stream_updated_at': instance.streamUpdatedAt?.toIso8601String(),
-      'version_number': instance.versionNumber,
-      'autopsyfulladdress': instance.autopsyFullAddress,
-      'autopsystreet': instance.autopsyStreet,
-      'autopsypostalcode': instance.autopsyPostalCode,
-      'autopsymunicipality': instance.autopsyMunicipality,
-      'autopsystate': instance.autopsyState,
-      'autopsycity': instance.autopsyCity,
-      'autopsyage': instance.autopsyAge,
-      'autopsyak': instance.autopsyAk,
-      'autopsyadminemail': instance.autopsyAdminEmail,
-      'autopsyadminmobile': instance.autopsyAdminMobile,
-      'autopsylandlinephonenumber': instance.autopsyLandlinePhoneNumber,
-      'autopsybid': instance.autopsyBid,
-      'autopsycab': instance.autopsyCab,
-      'autopsycategory': instance.autopsyCategory,
-      'autopsycustomeremail': instance.autopsyCustomerEmail,
-      'autopsycustomermobile': instance.autopsyCustomerMobile,
-      'autopsyoutofsystem': instance.autopsyOutOfSystem,
-      'autopsycustomerfloor': instance.autopsyCustomerFloor,
-      'autopsylatitude': instance.autopsyLatitude,
-      'autopsylongtitude': instance.autopsyLongitude,
-      'autopsyordernumber': instance.autopsyOrderNumber,
-      'autopsypilot': instance.autopsyPilot,
-      'autopsystatus': instance.autopsyStatus,
-      'autopsycomments': instance.autopsyComments,
-      'autopsyttlp': instance.autopsyTtlp,
-      'autopsyttllppptest': instance.autopsyTtllpppTest,
-      'building_id': instance.buildingId,
-      'autopsycustomername': instance.autopsyCustomerName,
+      'createdAt': instance.createdAt?.toIso8601String(),
+      'modifiedAt': instance.modifiedAt?.toIso8601String(),
+      'deletedAt': instance.deletedAt?.toIso8601String(),
+      'createdById': instance.createdById,
+      'modifiedById': instance.modifiedById,
+      'assignedUserId': instance.assignedUserId,
+      'tenantId': instance.tenantId,
+      'streamUpdatedAt': instance.streamUpdatedAt?.toIso8601String(),
+      'versionNumber': instance.versionNumber,
+      'isDeleted': instance.isDeleted,
+      'autopsyFullAddress': instance.autopsyFullAddress,
+      'autopsyStreet': instance.autopsyStreet,
+      'autopsyPostalCode': instance.autopsyPostalCode,
+      'autopsyMunicipality': instance.autopsyMunicipality,
+      'autopsyState': instance.autopsyState,
+      'autopsyCity': instance.autopsyCity,
+      'address1': instance.address1,
+      'address2': instance.address2,
+      'city': instance.city,
+      'state': instance.state,
+      'postcode': instance.postcode,
+      'country': instance.country,
+      'autopsyCustomerName': instance.autopsyCustomerName,
+      'autopsycustomername': instance.autopsycustomername,
+      'autopsyCustomerEmail': instance.autopsyCustomerEmail,
+      'autopsycustomeremail': instance.autopsycustomeremail,
+      'autopsyCustomerMobile': instance.autopsyCustomerMobile,
+      'autopsycustomermobile': instance.autopsycustomermobile,
+      'autopsyCustomerFloor': instance.autopsyCustomerFloor,
+      'autopsyAge': instance.autopsyAge,
+      'autopsyAk': instance.autopsyAk,
+      'autopsyAdminEmail': instance.autopsyAdminEmail,
+      'autopsyAdminMobile': instance.autopsyAdminMobile,
+      'autopsyLandlinePhoneNumber': instance.autopsyLandlinePhoneNumber,
+      'autopsyAdminLandline': instance.autopsyAdminLandline,
+      'adminAutopsyName': instance.adminAutopsyName,
+      'autopsyBid': instance.autopsyBid,
+      'autopsybid': instance.autopsybid,
+      'autopsyCab': instance.autopsyCab,
+      'autopsycab': instance.autopsycab,
+      'autopsyCategory': instance.autopsyCategory,
+      'autopsycategory': instance.autopsycategory,
+      'autopsyOrderNumber': instance.autopsyOrderNumber,
+      'autopsyordernumber': instance.autopsyordernumber,
+      'autopsyPilot': instance.autopsyPilot,
       'type': instance.type,
-      'adminautopsyname': instance.adminAutopsyName,
-      'autopsyadminlandline': instance.autopsyAdminLandline,
-      'technicalcheckstatus': instance.technicalCheckStatus,
-      'soilworkstatus': instance.soilWorkStatus,
-      'constructionstatus': instance.constructionStatus,
-      'splicingstatus': instance.splicingStatus,
-      'billingstatus': instance.billingStatus,
-      'malfunctionstatus': instance.malfunctionStatus,
-    };
-
-CreateAutopsyRequest _$CreateAutopsyRequestFromJson(
-        Map<String, dynamic> json) =>
-    CreateAutopsyRequest(
-      name: json['name'] as String?,
-      description: json['description'] as String?,
-      autopsyFullAddress: json['autopsyfulladdress'] as String?,
-      autopsyStreet: json['autopsystreet'] as String?,
-      autopsyPostalCode: json['autopsypostalcode'] as String?,
-      autopsyMunicipality: json['autopsymunicipality'] as String?,
-      autopsyState: json['autopsystate'] as String?,
-      autopsyCity: json['autopsycity'] as String?,
-      autopsyCustomerName: json['autopsycustomername'] as String?,
-      autopsyCustomerEmail: json['autopsycustomeremail'] as String?,
-      autopsyCustomerMobile: json['autopsycustomermobile'] as String?,
-      autopsyStatus: json['autopsystatus'] as String?,
-      autopsyCategory: json['autopsycategory'] as String?,
-      autopsyComments: json['autopsycomments'] as String?,
-      technicalCheckStatus: json['technicalcheckstatus'] as String?,
-      assignedUserId: json['assigned_user_id'] as String?,
-    );
-
-Map<String, dynamic> _$CreateAutopsyRequestToJson(
-        CreateAutopsyRequest instance) =>
-    <String, dynamic>{
-      'name': instance.name,
-      'description': instance.description,
-      'autopsyfulladdress': instance.autopsyFullAddress,
-      'autopsystreet': instance.autopsyStreet,
-      'autopsypostalcode': instance.autopsyPostalCode,
-      'autopsymunicipality': instance.autopsyMunicipality,
-      'autopsystate': instance.autopsyState,
-      'autopsycity': instance.autopsyCity,
-      'autopsycustomername': instance.autopsyCustomerName,
-      'autopsycustomeremail': instance.autopsyCustomerEmail,
-      'autopsycustomermobile': instance.autopsyCustomerMobile,
-      'autopsystatus': instance.autopsyStatus,
-      'autopsycategory': instance.autopsyCategory,
-      'autopsycomments': instance.autopsyComments,
-      'technicalcheckstatus': instance.technicalCheckStatus,
-      'assigned_user_id': instance.assignedUserId,
-    };
-
-UpdateAutopsyRequest _$UpdateAutopsyRequestFromJson(
-        Map<String, dynamic> json) =>
-    UpdateAutopsyRequest(
-      name: json['name'] as String?,
-      description: json['description'] as String?,
-      autopsyFullAddress: json['autopsyfulladdress'] as String?,
-      autopsyStatus: json['autopsystatus'] as String?,
-      autopsyComments: json['autopsycomments'] as String?,
-      technicalCheckStatus: json['technicalcheckstatus'] as String?,
-      autopsyCustomerMobile: json['autopsycustomermobile'] as String?,
-    );
-
-Map<String, dynamic> _$UpdateAutopsyRequestToJson(
-        UpdateAutopsyRequest instance) =>
-    <String, dynamic>{
-      'name': instance.name,
-      'description': instance.description,
-      'autopsyfulladdress': instance.autopsyFullAddress,
-      'autopsystatus': instance.autopsyStatus,
-      'autopsycomments': instance.autopsyComments,
-      'technicalcheckstatus': instance.technicalCheckStatus,
-      'autopsycustomermobile': instance.autopsyCustomerMobile,
+      'autopsyStatus': instance.autopsyStatus,
+      'autopsystatus': instance.autopsystatus,
+      'technicalCheckStatus': instance.technicalCheckStatus,
+      'technicalcheckstatus': instance.technicalcheckstatus,
+      'soilWorkStatus': instance.soilWorkStatus,
+      'constructionStatus': instance.constructionStatus,
+      'splicingStatus': instance.splicingStatus,
+      'billingStatus': instance.billingStatus,
+      'malfunctionStatus': instance.malfunctionStatus,
+      'autopsyComments': instance.autopsyComments,
+      'autopsycomments': instance.autopsycomments,
+      'autopsyOutOfSystem': instance.autopsyOutOfSystem,
+      'autopsyLatitude': instance.autopsyLatitude,
+      'autopsyLongitude': instance.autopsyLongitude,
+      'autopsyTtlp': instance.autopsyTtlp,
+      'autopsyTtllpppTest': instance.autopsyTtllpppTest,
+      'buildingId': instance.buildingId,
     };
 
 AutopsyResponse _$AutopsyResponseFromJson(Map<String, dynamic> json) =>
@@ -188,20 +162,51 @@ AutopsyResponse _$AutopsyResponseFromJson(Map<String, dynamic> json) =>
           .map((e) => CAutopsy.fromJson(e as Map<String, dynamic>))
           .toList(),
       total: (json['total'] as num).toInt(),
-      limit: (json['limit'] as num).toInt(),
-      offset: (json['offset'] as num).toInt(),
-      totalActive: (json['total_active'] as num?)?.toInt(),
-      totalDeleted: (json['total_deleted'] as num?)?.toInt(),
+      page: (json['page'] as num?)?.toInt(),
+      limit: (json['limit'] as num?)?.toInt(),
+      offset: (json['offset'] as num?)?.toInt(),
+      totalActive: (json['totalActive'] as num?)?.toInt(),
+      totalDeleted: (json['totalDeleted'] as num?)?.toInt(),
+      permissionDenied: json['permissionDenied'] as bool?,
+      error: json['error'] as String?,
     );
 
 Map<String, dynamic> _$AutopsyResponseToJson(AutopsyResponse instance) =>
     <String, dynamic>{
       'data': instance.data,
       'total': instance.total,
+      'page': instance.page,
       'limit': instance.limit,
       'offset': instance.offset,
-      'total_active': instance.totalActive,
-      'total_deleted': instance.totalDeleted,
+      'totalActive': instance.totalActive,
+      'totalDeleted': instance.totalDeleted,
+      'permissionDenied': instance.permissionDenied,
+      'error': instance.error,
+    };
+
+AutopsyListResponse _$AutopsyListResponseFromJson(Map<String, dynamic> json) =>
+    AutopsyListResponse(
+      data: (json['data'] as List<dynamic>)
+          .map((e) => CAutopsy.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: (json['total'] as num).toInt(),
+      page: (json['page'] as num?)?.toInt(),
+      limit: (json['limit'] as num?)?.toInt(),
+      offset: (json['offset'] as num?)?.toInt(),
+      permissionDenied: json['permissionDenied'] as bool?,
+      error: json['error'] as String?,
+    );
+
+Map<String, dynamic> _$AutopsyListResponseToJson(
+        AutopsyListResponse instance) =>
+    <String, dynamic>{
+      'data': instance.data,
+      'total': instance.total,
+      'page': instance.page,
+      'limit': instance.limit,
+      'offset': instance.offset,
+      'permissionDenied': instance.permissionDenied,
+      'error': instance.error,
     };
 
 AutopsyDetailResponse _$AutopsyDetailResponseFromJson(
@@ -210,61 +215,288 @@ AutopsyDetailResponse _$AutopsyDetailResponseFromJson(
       data: json['data'] == null
           ? null
           : CAutopsy.fromJson(json['data'] as Map<String, dynamic>),
-      permissionDenied: json['permission_denied'] as bool?,
+      permissionDenied: json['permissionDenied'] as bool?,
+      error: json['error'] as String?,
     );
 
 Map<String, dynamic> _$AutopsyDetailResponseToJson(
         AutopsyDetailResponse instance) =>
     <String, dynamic>{
       'data': instance.data,
-      'permission_denied': instance.permissionDenied,
+      'permissionDenied': instance.permissionDenied,
+      'error': instance.error,
+    };
+
+SingleAutopsyResponse _$SingleAutopsyResponseFromJson(
+        Map<String, dynamic> json) =>
+    SingleAutopsyResponse(
+      data: json['data'] == null
+          ? null
+          : CAutopsy.fromJson(json['data'] as Map<String, dynamic>),
+      permissionDenied: json['permissionDenied'] as bool?,
+      error: json['error'] as String?,
+    );
+
+Map<String, dynamic> _$SingleAutopsyResponseToJson(
+        SingleAutopsyResponse instance) =>
+    <String, dynamic>{
+      'data': instance.data,
+      'permissionDenied': instance.permissionDenied,
+      'error': instance.error,
+    };
+
+ListAutopsyParams _$ListAutopsyParamsFromJson(Map<String, dynamic> json) =>
+    ListAutopsyParams(
+      limit: (json['limit'] as num?)?.toInt(),
+      offset: (json['offset'] as num?)?.toInt(),
+      orderBy: json['orderBy'] as String?,
+      orderDirection: json['orderDirection'] as String?,
+      search: json['search'] as String?,
+      status: json['status'] as String?,
+      category: json['category'] as String?,
+      includeDeleted: json['includeDeleted'] as bool?,
+    );
+
+Map<String, dynamic> _$ListAutopsyParamsToJson(ListAutopsyParams instance) =>
+    <String, dynamic>{
+      'limit': instance.limit,
+      'offset': instance.offset,
+      'orderBy': instance.orderBy,
+      'orderDirection': instance.orderDirection,
+      'search': instance.search,
+      'status': instance.status,
+      'category': instance.category,
+      'includeDeleted': instance.includeDeleted,
+    };
+
+SearchAutopsyParams _$SearchAutopsyParamsFromJson(Map<String, dynamic> json) =>
+    SearchAutopsyParams(
+      query: json['query'] as String,
+      limit: (json['limit'] as num?)?.toInt(),
+      offset: (json['offset'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$SearchAutopsyParamsToJson(
+        SearchAutopsyParams instance) =>
+    <String, dynamic>{
+      'query': instance.query,
+      'limit': instance.limit,
+      'offset': instance.offset,
+    };
+
+CreateAutopsyRequest _$CreateAutopsyRequestFromJson(
+        Map<String, dynamic> json) =>
+    CreateAutopsyRequest(
+      name: json['name'] as String?,
+      description: json['description'] as String?,
+      displayName: json['displayName'] as String?,
+      autopsyFullAddress: json['autopsyFullAddress'] as String?,
+      autopsyStreet: json['autopsyStreet'] as String?,
+      autopsyPostalCode: json['autopsyPostalCode'] as String?,
+      autopsyMunicipality: json['autopsyMunicipality'] as String?,
+      autopsyState: json['autopsyState'] as String?,
+      autopsyCity: json['autopsyCity'] as String?,
+      autopsyCustomerName: json['autopsyCustomerName'] as String?,
+      autopsyCustomerEmail: json['autopsyCustomerEmail'] as String?,
+      autopsyCustomerMobile: json['autopsyCustomerMobile'] as String?,
+      autopsyStatus: json['autopsyStatus'] as String?,
+      autopsyCategory: json['autopsyCategory'] as String?,
+      autopsyComments: json['autopsyComments'] as String?,
+      technicalCheckStatus: json['technicalCheckStatus'] as String?,
+      assignedUserId: json['assignedUserId'] as String?,
+      address1: json['address1'] as String?,
+      address2: json['address2'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      postcode: json['postcode'] as String?,
+      country: json['country'] as String?,
+      autopsycustomername: json['autopsycustomername'] as String?,
+      autopsycustomeremail: json['autopsycustomeremail'] as String?,
+      autopsycustomermobile: json['autopsycustomermobile'] as String?,
+      autopsyordernumber: json['autopsyordernumber'] as String?,
+      autopsybid: json['autopsybid'] as String?,
+      autopsycab: json['autopsycab'] as String?,
+      autopsystatus: json['autopsystatus'] as String?,
+      autopsycategory: json['autopsycategory'] as String?,
+      autopsycomments: json['autopsycomments'] as String?,
+      technicalcheckstatus: json['technicalcheckstatus'] as String?,
+    );
+
+Map<String, dynamic> _$CreateAutopsyRequestToJson(
+        CreateAutopsyRequest instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'description': instance.description,
+      'displayName': instance.displayName,
+      'autopsyFullAddress': instance.autopsyFullAddress,
+      'autopsyStreet': instance.autopsyStreet,
+      'autopsyPostalCode': instance.autopsyPostalCode,
+      'autopsyMunicipality': instance.autopsyMunicipality,
+      'autopsyState': instance.autopsyState,
+      'autopsyCity': instance.autopsyCity,
+      'autopsyCustomerName': instance.autopsyCustomerName,
+      'autopsyCustomerEmail': instance.autopsyCustomerEmail,
+      'autopsyCustomerMobile': instance.autopsyCustomerMobile,
+      'autopsyStatus': instance.autopsyStatus,
+      'autopsyCategory': instance.autopsyCategory,
+      'autopsyComments': instance.autopsyComments,
+      'technicalCheckStatus': instance.technicalCheckStatus,
+      'assignedUserId': instance.assignedUserId,
+      'address1': instance.address1,
+      'address2': instance.address2,
+      'city': instance.city,
+      'state': instance.state,
+      'postcode': instance.postcode,
+      'country': instance.country,
+      'autopsycustomername': instance.autopsycustomername,
+      'autopsycustomeremail': instance.autopsycustomeremail,
+      'autopsycustomermobile': instance.autopsycustomermobile,
+      'autopsyordernumber': instance.autopsyordernumber,
+      'autopsybid': instance.autopsybid,
+      'autopsycab': instance.autopsycab,
+      'autopsystatus': instance.autopsystatus,
+      'autopsycategory': instance.autopsycategory,
+      'autopsycomments': instance.autopsycomments,
+      'technicalcheckstatus': instance.technicalcheckstatus,
+    };
+
+UpdateAutopsyRequest _$UpdateAutopsyRequestFromJson(
+        Map<String, dynamic> json) =>
+    UpdateAutopsyRequest(
+      name: json['name'] as String?,
+      description: json['description'] as String?,
+      autopsyFullAddress: json['autopsyFullAddress'] as String?,
+      autopsyStatus: json['autopsyStatus'] as String?,
+      autopsyComments: json['autopsyComments'] as String?,
+      technicalCheckStatus: json['technicalCheckStatus'] as String?,
+      autopsyCustomerMobile: json['autopsyCustomerMobile'] as String?,
+      displayName: json['displayName'] as String?,
+      autopsycustomername: json['autopsycustomername'] as String?,
+      autopsycustomeremail: json['autopsycustomeremail'] as String?,
+      autopsycustomermobile: json['autopsycustomermobile'] as String?,
+      autopsyordernumber: json['autopsyordernumber'] as String?,
+      autopsybid: json['autopsybid'] as String?,
+      autopsycab: json['autopsycab'] as String?,
+      autopsystatus: json['autopsystatus'] as String?,
+      autopsycategory: json['autopsycategory'] as String?,
+      autopsycomments: json['autopsycomments'] as String?,
+      technicalcheckstatus: json['technicalcheckstatus'] as String?,
+      address1: json['address1'] as String?,
+      address2: json['address2'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      postcode: json['postcode'] as String?,
+      country: json['country'] as String?,
+    );
+
+Map<String, dynamic> _$UpdateAutopsyRequestToJson(
+        UpdateAutopsyRequest instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'description': instance.description,
+      'autopsyFullAddress': instance.autopsyFullAddress,
+      'autopsyStatus': instance.autopsyStatus,
+      'autopsyComments': instance.autopsyComments,
+      'technicalCheckStatus': instance.technicalCheckStatus,
+      'autopsyCustomerMobile': instance.autopsyCustomerMobile,
+      'displayName': instance.displayName,
+      'autopsycustomername': instance.autopsycustomername,
+      'autopsycustomeremail': instance.autopsycustomeremail,
+      'autopsycustomermobile': instance.autopsycustomermobile,
+      'autopsyordernumber': instance.autopsyordernumber,
+      'autopsybid': instance.autopsybid,
+      'autopsycab': instance.autopsycab,
+      'autopsystatus': instance.autopsystatus,
+      'autopsycategory': instance.autopsycategory,
+      'autopsycomments': instance.autopsycomments,
+      'technicalcheckstatus': instance.technicalcheckstatus,
+      'address1': instance.address1,
+      'address2': instance.address2,
+      'city': instance.city,
+      'state': instance.state,
+      'postcode': instance.postcode,
+      'country': instance.country,
     };
 
 AutopsyPermissions _$AutopsyPermissionsFromJson(Map<String, dynamic> json) =>
     AutopsyPermissions(
-      canCreate: json['can_create'] as bool,
-      canRead: json['can_read'] as bool,
-      canEdit: json['can_edit'] as bool,
-      canDelete: json['can_delete'] as bool,
-      canRestore: json['can_restore'] as bool,
-      canPermanentDelete: json['can_permanent_delete'] as bool,
-      canViewDeleted: json['can_view_deleted'] as bool,
-      visibleFields: (json['visible_fields'] as List<dynamic>)
+      canRead: json['canRead'] as bool,
+      canCreate: json['canCreate'] as bool,
+      canEdit: json['canEdit'] as bool,
+      canDelete: json['canDelete'] as bool,
+      canRestore: json['canRestore'] as bool,
+      canPermanentDelete: json['canPermanentDelete'] as bool,
+      canViewDeleted: json['canViewDeleted'] as bool,
+      visibleFields: (json['visibleFields'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
-      editableFields: (json['editable_fields'] as List<dynamic>)
+      editableFields: (json['editableFields'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
-      creatableFields: (json['creatable_fields'] as List<dynamic>)
+      creatableFields: (json['creatableFields'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
     );
 
 Map<String, dynamic> _$AutopsyPermissionsToJson(AutopsyPermissions instance) =>
     <String, dynamic>{
-      'can_create': instance.canCreate,
-      'can_read': instance.canRead,
-      'can_edit': instance.canEdit,
-      'can_delete': instance.canDelete,
-      'can_restore': instance.canRestore,
-      'can_permanent_delete': instance.canPermanentDelete,
-      'can_view_deleted': instance.canViewDeleted,
-      'visible_fields': instance.visibleFields,
-      'editable_fields': instance.editableFields,
-      'creatable_fields': instance.creatableFields,
+      'canRead': instance.canRead,
+      'canCreate': instance.canCreate,
+      'canEdit': instance.canEdit,
+      'canDelete': instance.canDelete,
+      'canRestore': instance.canRestore,
+      'canPermanentDelete': instance.canPermanentDelete,
+      'canViewDeleted': instance.canViewDeleted,
+      'visibleFields': instance.visibleFields,
+      'editableFields': instance.editableFields,
+      'creatableFields': instance.creatableFields,
     };
 
 PermissionResponse _$PermissionResponseFromJson(Map<String, dynamic> json) =>
     PermissionResponse(
-      success: json['success'] as bool,
-      permissions: AutopsyPermissions.fromJson(
-          json['permissions'] as Map<String, dynamic>),
-      cached: json['cached'] as bool?,
+      data: json['data'] == null
+          ? null
+          : AutopsyPermissions.fromJson(json['data'] as Map<String, dynamic>),
+      error: json['error'] as String?,
     );
 
 Map<String, dynamic> _$PermissionResponseToJson(PermissionResponse instance) =>
     <String, dynamic>{
-      'success': instance.success,
-      'permissions': instance.permissions,
-      'cached': instance.cached,
+      'data': instance.data,
+      'error': instance.error,
+    };
+
+AutopsyStatusOption _$AutopsyStatusOptionFromJson(Map<String, dynamic> json) =>
+    AutopsyStatusOption(
+      value: json['value'] as String,
+      label: json['label'] as String,
+      color: json['color'] as String?,
+      order: (json['order'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$AutopsyStatusOptionToJson(
+        AutopsyStatusOption instance) =>
+    <String, dynamic>{
+      'value': instance.value,
+      'label': instance.label,
+      'color': instance.color,
+      'order': instance.order,
+    };
+
+AutopsyCategoryOption _$AutopsyCategoryOptionFromJson(
+        Map<String, dynamic> json) =>
+    AutopsyCategoryOption(
+      value: json['value'] as String,
+      label: json['label'] as String,
+      description: json['description'] as String?,
+      order: (json['order'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$AutopsyCategoryOptionToJson(
+        AutopsyCategoryOption instance) =>
+    <String, dynamic>{
+      'value': instance.value,
+      'label': instance.label,
+      'description': instance.description,
+      'order': instance.order,
     };

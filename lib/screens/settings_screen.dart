@@ -1,9 +1,7 @@
-import 'package:fieldx_fsm/repositories/autopsy_repository.dart';
-import 'package:fieldx_fsm/services/auth_service.dart';
-import 'package:fieldx_fsm/services/permissions_manager.dart';
-import 'package:fieldx_fsm/utils/error_handler.dart';
+// lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/permissions_manager.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -13,62 +11,34 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        elevation: 2,
+        backgroundColor: const Color(0xFF1565C0),
+        foregroundColor: Colors.white,
       ),
       body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          // User info section
-          Consumer<AuthService>(
-            builder: (context, authService, child) {
-              return Card(
-                margin: const EdgeInsets.all(16),
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.person),
-                  ),
-                  title: Text(authService.currentUsername ?? 'Unknown User'),
-                  subtitle: Text('User ID: ${authService.currentUser ?? 'N/A'}'),
-                ),
-              );
-            },
-          ),
-          
-          
-          const SizedBox(height: 16),
-          
-          // Actions section
           Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.refresh),
-                  title: const Text('Refresh Permissions'),
-                  onTap: () => _refreshPermissions(context),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.clear),
-                  title: const Text('Clear Cache'),
-                  onTap: () => _clearCache(context),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.bug_report),
-                  title: const Text('Debug Info'),
-                  onTap: () => _showDebugInfo(context),
-                ),
-              ],
+            child: ListTile(
+              leading: const Icon(Icons.security),
+              title: const Text('Permissions'),
+              subtitle: const Text('Manage app permissions'),
+              onTap: () => _showPermissionsDialog(context),
             ),
           ),
-          
-          const SizedBox(height: 16),
-          
-          // Logout section
           Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
             child: ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () => _logout(context),
+              leading: const Icon(Icons.cleaning_services),
+              title: const Text('Clear Cache'),
+              subtitle: const Text('Clear app cache and data'),
+              onTap: () => _clearCache(context),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.info),
+              title: const Text('Debug Info'),
+              subtitle: const Text('View debug information'),
+              onTap: () => _showDebugInfo(context),
             ),
           ),
         ],
@@ -76,65 +46,31 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _refreshPermissions(BuildContext context) async {
-    try {
-      final permissionsManager = context.read<PermissionsManager>();
-      
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permissions refreshed')),
-        );
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ErrorHandler.showErrorSnackBar(context, error);
-      }
-    }
-  }
-
-  Future<void> _clearCache(BuildContext context) async {
-    try {
-      final repository = context.read<AutopsyRepository>();
-      final permissionsManager = context.read<PermissionsManager>();
-      
-      repository.clearCaches();
-      await permissionsManager.clearCache();
-      
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cache cleared')),
-        );
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ErrorHandler.showErrorSnackBar(context, error);
-      }
-    }
+  void _clearCache(BuildContext context) {
+    final permissionsManager = context.read<PermissionsManager>();
+    permissionsManager.clearCache();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cache cleared successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   void _showDebugInfo(BuildContext context) {
-    final repository = context.read<AutopsyRepository>();
     final permissionsManager = context.read<PermissionsManager>();
-    
-    final debugInfo = {
-      'Repository Cache': repository.getCacheInfo(),
-      'Permissions': permissionsManager.getDebugSummary(),
-    };
+    final debugInfo = permissionsManager.getDebugSummary();
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Debug Information'),
-        content: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: SingleChildScrollView(
-            child: Text(
-              debugInfo.entries
-                  .map((e) => '${e.key}:\n${e.value}\n')
-                  .join('\n'),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 10),
-            ),
+        content: SingleChildScrollView(
+          child: Text(
+            debugInfo.entries
+                .map((e) => '${e.key}: ${e.value}')
+                .join('\n'),
           ),
         ),
         actions: [
@@ -147,28 +83,52 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _logout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+  void _showPermissionsDialog(BuildContext context) {
+    showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: const Text('Permissions'),
+        content: Consumer<PermissionsManager>(
+          builder: (context, permissions, child) {
+            if (permissions.isLoading) {
+              return const CircularProgressIndicator();
+            }
+            
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(
+                    permissions.canCreate ? Icons.check : Icons.close,
+                    color: permissions.canCreate ? Colors.green : Colors.red,
+                  ),
+                  title: const Text('Create'),
+                ),
+                ListTile(
+                  leading: Icon(
+                    permissions.canEdit ? Icons.check : Icons.close,
+                    color: permissions.canEdit ? Colors.green : Colors.red,
+                  ),
+                  title: const Text('Edit'),
+                ),
+                ListTile(
+                  leading: Icon(
+                    permissions.canDelete ? Icons.check : Icons.close,
+                    color: permissions.canDelete ? Colors.green : Colors.red,
+                  ),
+                  title: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Logout'),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
           ),
         ],
       ),
     );
-    
-    if (confirmed == true && context.mounted) {
-      await context.read<AuthService>().logout();
-    }
   }
 }

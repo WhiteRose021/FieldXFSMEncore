@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:fieldx_fsm/models/autopsy_models.dart';
 import 'package:fieldx_fsm/repositories/autopsy_repository.dart';
 import 'package:fieldx_fsm/services/permissions_manager.dart';
@@ -28,7 +30,7 @@ class _AutopsyEditBottomSheetState extends State<AutopsyEditBottomSheet> {
     _formData = {
       'name': widget.autopsy.name,
       'description': widget.autopsy.description,
-      'autopsystatus': widget.autopsy.autopsyStatus,
+      'autopsystatus': widget.autopsy.autopsystatus,
       'autopsycomments': widget.autopsy.autopsyComments,
       'technicalcheckstatus': widget.autopsy.technicalCheckStatus,
       'autopsycustomermobile': widget.autopsy.autopsyCustomerMobile,

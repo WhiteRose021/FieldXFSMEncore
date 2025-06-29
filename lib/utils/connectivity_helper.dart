@@ -1,5 +1,4 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ConnectivityHelper {
@@ -8,6 +7,7 @@ class ConnectivityHelper {
   static Future<bool> isConnected() async {
     try {
       final result = await _connectivity.checkConnectivity();
+      // ignore: unrelated_type_equality_checks
       return result != ConnectivityResult.none;
     } catch (error) {
       debugPrint('Connectivity check error: $error');

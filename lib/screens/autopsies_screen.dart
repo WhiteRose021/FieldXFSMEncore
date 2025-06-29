@@ -28,7 +28,6 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
 
   // FSM Theme Colors
   static const Color primaryBlue = Color(0xFF1565C0);
-  static const Color lightBlue = Color(0xFF1976D2);
   static const Color backgroundColor = Color(0xFFF5F6FA);
   static const Color primaryText = Color(0xFF2E3A59);
   static const Color secondaryText = Color(0xFF6B7280);
@@ -52,6 +51,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
       final permissionsManager = context.read<PermissionsManager>();
       await PermissionsHelper.ensurePermissionsLoaded(permissionsManager);
       
+      // ignore: use_build_context_synchronously
       final repository = context.read<AutopsyRepository>();
       await repository.loadAutopsies(refresh: true);
       
@@ -79,7 +79,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.menu),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(), // Opens your existing sidebar
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         title: const Text(
           'Autopsies',
@@ -113,8 +113,6 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      // Add your existing sidebar/drawer widget here:
-      // drawer: YourSidebarWidget(),
       body: !_isInitialized
           ? _buildLoadingState()
           : Column(
@@ -630,7 +628,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        autopsy.displayName,
+                        autopsy.displayName ?? 'Autopsy ${autopsy.id}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -638,15 +636,15 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                         ),
                       ),
                     ),
-                    _buildStatusBadge(autopsy.autopsyStatus ?? 'unknown'),
+                    _buildStatusBadge(autopsy.autopsystatus ?? 'unknown'),
                   ],
                 ),
                 const SizedBox(height: 12),
                 // Customer info
-                if (autopsy.autopsyCustomerName?.isNotEmpty == true)
+                if (autopsy.autopsycustomername?.isNotEmpty == true)
                   _buildInfoRow(
                     'Customer',
-                    autopsy.autopsyCustomerName!,
+                    autopsy.autopsycustomername!,
                     Icons.person_outline,
                   ),
                 // Address
@@ -659,7 +657,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                 // Category and date
                 Row(
                   children: [
-                    if (autopsy.autopsyCategory?.isNotEmpty == true) ...[
+                    if (autopsy.autopsycategory?.isNotEmpty == true) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
@@ -667,7 +665,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          autopsy.autopsyCategory!,
+                          autopsy.autopsycategory!,
                           style: const TextStyle(
                             color: primaryBlue,
                             fontWeight: FontWeight.w600,

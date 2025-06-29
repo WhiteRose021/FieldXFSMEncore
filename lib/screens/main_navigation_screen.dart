@@ -1,13 +1,13 @@
-// lib/app/app.dart
+// lib/screens/main_navigation_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/autopsy_client.dart';
-import '../services/permissions_manager.dart';
 import '../repositories/autopsy_repository.dart';
-import 'routes.dart';
+import '../services/permissions_manager.dart';
+import '../services/autopsy_client.dart';
+import 'autopsies_screen.dart';
 
-class FieldFSMApp extends StatelessWidget {
-  const FieldFSMApp({super.key});
+class MainNavigationScreen extends StatelessWidget {
+  const MainNavigationScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -27,18 +27,7 @@ class FieldFSMApp extends StatelessWidget {
               previous ?? AutopsyRepository(client: client),
         ),
       ],
-      child: MaterialApp(
-        title: 'FieldFSM',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          useMaterial3: true,
-        ),
-        initialRoute: AppRoutes.login,
-        routes: AppRoutes.getRoutes(),
-        onGenerateRoute: AppRoutes.generateRoute,
-        debugShowCheckedModeBanner: false,
-      ),
+      child: const AutopsiesScreen(),
     );
   }
 }
