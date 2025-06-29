@@ -6,6 +6,7 @@ class PermissionsManager extends ChangeNotifier {
   AutopsyPermissions? _permissions;
   bool _isLoading = false;
   String? _error;
+  final Map<String, dynamic> _cache = {};
 
   // Getters
   AutopsyPermissions? get permissions => _permissions;
@@ -39,8 +40,9 @@ class PermissionsManager extends ChangeNotifier {
         canRestore: true,
         canPermanentDelete: false,
         canViewDeleted: true,
-        visibleFields: [],
-        editableFields: [],
+        visibleFields: ['name', 'description', 'autopsystatus', 'autopsycomments'],
+        editableFields: ['name', 'autopsystatus', 'autopsycomments'],
+        creatableFields: ['name', 'description', 'autopsystatus', 'autopsycomments'],
       );
 
     } catch (error) {
@@ -56,5 +58,104 @@ class PermissionsManager extends ChangeNotifier {
     _permissions = null;
     _error = null;
     notifyListeners();
+  }
+
+  // Clear cache method (required by SettingsScreen)
+  void clearCache() {
+    _cache.clear();
+    _permissions = null;
+    _error = null;
+    notifyListeners();
+  }
+
+  // Get debug summary (required by SettingsScreen)
+  Map<String, dynamic> getDebugSummary() {
+    return {
+      'Has Permissions': hasPermissions,
+      'Is Loading': isLoading,
+      'Error': error ?? 'None',
+      'Can Create': canCreate,
+      'Can Edit': canEdit,
+      'Can Delete': canDelete,
+      'Can Restore': canRestore,
+      'Can View Deleted': canViewDeleted,
+      'Visible Fields': _permissions?.visibleFields.length ?? 0,
+      'Editable Fields': _permissions?.editableFields.length ?? 0,
+      'Creatable Fields': _permissions?.creatableFields.length ?? 0,
+      'Cache Size': _cache.length,
+      'Last Updated': DateTime.now().toIso8601String(),
+    };
+  }
+
+  // Check if a specific field can be edited (required by AutopsyEditBottomSheet)
+  bool canEditField(String fieldName) {
+    if (_permissions == null) return false;
+    return _permissions!.editableFields.contains(fieldName);
+  }
+
+  // Check if a specific field is visible
+  bool canViewField(String fieldName) {
+    if (_permissions == null) return false;
+    return _permissions!.visibleFields.contains(fieldName);
+  }
+
+  // Check if a specific field can be created
+  bool canCreateField(String fieldName) {
+    if (_permissions == null) return false;
+    return _permissions!.creatableFields.contains(fieldName);
+  }
+
+  // Get all visible fields
+  List<String> getVisibleFields() {
+    return _permissions?.visibleFields ?? [];
+  }
+
+  // Get all editable fields
+  List<String> getEditableFields() {
+    return _permissions?.editableFields ?? [];
+  }
+
+  // Get all creatable fields
+  List<String> getCreatableFields() {
+    return _permissions?.creatableFields ?? [];
+  }
+
+  // Check if user can perform specific action
+  bool canPerformAction(String action) {
+    switch (action.toLowerCase()) {
+      case 'create':
+        return canCreate;
+      case 'edit':
+      case 'update':
+        return canEdit;
+      case 'delete':
+        return canDelete;
+      case 'restore':
+        return canRestore;
+      case 'view_deleted':
+        return canViewDeleted;
+      default:
+        return false;
+    }
+  }
+
+  // Force refresh permissions from server
+  Future<void> refreshPermissions() async {
+    _permissions = null;
+    _cache.clear();
+    await loadPermissions();
+  }
+
+  // Add cache management
+  void setCacheValue(String key, dynamic value) {
+    _cache[key] = value;
+  }
+
+  T? getCacheValue<T>(String key) {
+    return _cache[key] as T?;
+  }
+
+  bool hasCacheValue(String key) {
+    return _cache.containsKey(key);
   }
 }
