@@ -30,7 +30,7 @@ class _AutopsyEditBottomSheetState extends State<AutopsyEditBottomSheet> {
     _formData = {
       'name': widget.autopsy.name,
       'description': widget.autopsy.description,
-      'autopsystatus': widget.autopsy.autopsystatus,
+      'autopsystatus': widget.autopsy.autopsyStatus,
       'autopsycomments': widget.autopsy.autopsyComments,
       'technicalcheckstatus': widget.autopsy.technicalCheckStatus,
       'autopsycustomermobile': widget.autopsy.autopsyCustomerMobile,

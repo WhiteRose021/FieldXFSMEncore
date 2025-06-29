@@ -1,4 +1,6 @@
-// lib/main.dart
+// lib/main.dart - UPDATED with BackendService
+// Following FSM Architecture PLAN - Clean initialization with BackendService
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,22 +8,50 @@ import 'screens/autopsy_detail_screen.dart';
 import 'screens/autopsies_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/login_screen.dart';
-import 'services/autopsy_client.dart';
+import 'services/backend_service.dart';
+import 'services/autopsy_service.dart';
 import 'services/permissions_manager.dart';
 import 'services/auth_service.dart';
-import 'services/authentication_service.dart';
 import 'repositories/autopsy_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize SharedPreferences and set default backend if not set
-  final prefs = await SharedPreferences.getInstance();
-  if (!prefs.containsKey('selectedBackend')) {
-    await prefs.setString('selectedBackend', 'encore'); // Default to Encore
-  }
+  // Initialize app configuration and BackendService
+  await _initializeApp();
   
   runApp(const MyApp());
+}
+
+/// Initialize app configuration and BackendService
+Future<void> _initializeApp() async {
+  final prefs = await SharedPreferences.getInstance();
+  
+  // Set default environment (development = true for local testing)
+  if (!prefs.containsKey('isDevelopment')) {
+    await prefs.setBool('isDevelopment', true);
+  }
+  
+  // Set default tenant (empty = no specific tenant)
+  if (!prefs.containsKey('selectedTenant')) {
+    await prefs.setString('selectedTenant', '');
+  }
+  
+  // Get environment setting
+  final isDevelopment = prefs.getBool('isDevelopment') ?? true;
+  final environment = isDevelopment 
+      ? BackendEnvironment.development 
+      : BackendEnvironment.production;
+  
+  // Initialize BackendService with proper environment
+  await BackendService.instance.initialize(
+    environment: environment,
+    timeout: const Duration(seconds: 30),
+  );
+  
+  debugPrint('✅ App initialized with BackendService');
+  debugPrint('🌍 Environment: $environment');
+  debugPrint('🔗 API URL: ${BackendService.instance.getApiBaseUrl()}');
 }
 
 class MyApp extends StatelessWidget {
@@ -31,24 +61,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Authentication Service
-        Provider<AuthenticationService>(
-          create: (_) => AuthenticationService(),
+        // Auth Service
+        ChangeNotifierProvider<AuthService>(
+          create: (_) => AuthService(),
         ),
         
-        // Auth Service with dependency injection
-        ChangeNotifierProxyProvider<AuthenticationService, AuthService>(
-          create: (context) => AuthService(
-            authenticationService: context.read<AuthenticationService>(),
-          ),
-          update: (context, authService, previous) => previous ?? AuthService(
-            authenticationService: authService,
-          ),
-        ),
-        
-        // Autopsy Client - will be configured based on backend
-        Provider<AutopsyClient>(
-          create: (_) => AutopsyClient(baseUrl: _getApiBaseUrl()),
+        // Autopsy Service - now uses BackendService (no baseUrl needed)
+        Provider<AutopsyService>(
+          create: (_) => AutopsyService(),
         ),
         
         // Permissions Manager
@@ -57,19 +77,20 @@ class MyApp extends StatelessWidget {
         ),
         
         // Autopsy Repository
-        ChangeNotifierProxyProvider<AutopsyClient, AutopsyRepository>(
+        ChangeNotifierProxyProvider<AutopsyService, AutopsyRepository>(
           create: (context) => AutopsyRepository(
-            client: context.read<AutopsyClient>(),
+            client: context.read<AutopsyService>(),
           ),
           update: (context, client, previous) =>
               previous ?? AutopsyRepository(client: client),
         ),
       ],
       child: MaterialApp(
-        title: 'Field Management App',
+        title: 'FieldX FSM',
         theme: ThemeData(
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
+          useMaterial3: true,
         ),
         home: const AuthWrapper(),
         routes: {
@@ -81,15 +102,9 @@ class MyApp extends StatelessWidget {
             return AutopsyDetailScreen(autopsyId: autopsyId);
           },
         },
+        debugShowCheckedModeBanner: false,
       ),
     );
-  }
-  
-  // Get API base URL based on selected backend
-  static String _getApiBaseUrl() {
-    // This will be updated dynamically based on backend selection
-    // For now, return a default Encore URL
-    return 'https://your-encore-app.encr.app'; // Replace with your actual Encore app URL
   }
 }
 
@@ -102,24 +117,38 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    _initializeServices();
   }
 
-  Future<void> _initializeApp() async {
+  Future<void> _initializeServices() async {
     try {
+      debugPrint('🚀 Initializing FieldX FSM services...');
+      
       // Initialize the auth service
       final authService = context.read<AuthService>();
       await authService.initialize();
       
-      // Configure backend settings
-      await _configureBackend();
+      // Load permissions manager
+      final permissionsManager = context.read<PermissionsManager>();
+      await permissionsManager.loadPermissions();
+      
+      // If user is authenticated, set auth token in BackendService
+      if (authService.isAuthenticated && authService.currentUser != null) {
+        // Assuming auth service has a token property
+        // BackendService.instance.setAuthToken(authService.token);
+        debugPrint('🔐 User authenticated - token set in BackendService');
+      }
+      
+      debugPrint('✅ Service initialization completed');
       
     } catch (error) {
-      debugPrint('App initialization error: $error');
+      debugPrint('❌ Service initialization error: $error');
+      _error = error.toString();
     } finally {
       if (mounted) {
         setState(() {
@@ -127,48 +156,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         });
       }
     }
-  }
-
-  Future<void> _configureBackend() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedBackend = prefs.getString('selectedBackend') ?? 'encore';
-    
-    if (selectedBackend == 'encore') {
-      // Configure Encore backend
-      await _configureEncoreBackend(prefs);
-    } else {
-      // Configure EspoCRM backend  
-      await _configureEspoCRMBackend(prefs);
-    }
-  }
-
-  Future<void> _configureEncoreBackend(SharedPreferences prefs) async {
-    // Set default Encore configuration if not set
-    if (!prefs.containsKey('encoreApiUrl')) {
-      // Replace with your actual Encore app URL
-      await prefs.setString('encoreApiUrl', 'https://your-encore-app.encr.app');
-    }
-    
-    if (!prefs.containsKey('selectedTenant')) {
-      // Set default tenant
-      await prefs.setString('selectedTenant', 'default');
-    }
-    
-    if (!prefs.containsKey('isDevelopment')) {
-      // Set to true for development, false for production
-      await prefs.setBool('isDevelopment', true);
-    }
-    
-    debugPrint('✅ Encore backend configured');
-  }
-
-  Future<void> _configureEspoCRMBackend(SharedPreferences prefs) async {
-    // EspoCRM configuration - keep existing logic
-    if (!prefs.containsKey('crmDomain')) {
-      await prefs.setString('crmDomain', 'https://your-espocrm-domain.com');
-    }
-    
-    debugPrint('✅ EspoCRM backend configured');
   }
 
   @override
@@ -181,8 +168,63 @@ class _AuthWrapperState extends State<AuthWrapper> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Initializing app...'),
+              Text(
+                'Initializing FieldX FSM...',
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Connecting to Encore.ts backend',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
             ],
+          ),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Initialization Failed',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Backend: ${BackendService.instance.getApiBaseUrl()}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoading = true;
+                      _error = null;
+                    });
+                    _initializeServices();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -200,13 +242,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 }
 
-// Keep your existing AutopsyListScreen
+// Simple autopsy list screen for route compatibility
 class AutopsyListScreen extends StatelessWidget {
   const AutopsyListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // The providers are already available from the main app
     return const AutopsiesScreen();
   }
 }

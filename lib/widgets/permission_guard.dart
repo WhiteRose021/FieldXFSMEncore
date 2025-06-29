@@ -1,40 +1,33 @@
 // lib/widgets/permission_guard.dart
 import 'package:flutter/material.dart';
-import '../services/permission_service.dart';
+import 'package:provider/provider.dart';
+import '../services/permissions_manager.dart';
 
 /// Widget that conditionally shows/hides content based on permissions
-class PermissionGuard extends StatefulWidget {
-  final String entityType;
+class PermissionGuard extends StatelessWidget {
   final String action;
   final Widget child;
   final Widget? fallback;
-  final String? entityId;
-  final Map<String, dynamic>? entityData;
   final String? fieldName;
 
   const PermissionGuard({
     super.key,
-    required this.entityType,
     required this.action,
     required this.child,
     this.fallback,
-    this.entityId,
-    this.entityData,
     this.fieldName,
   });
 
   /// Factory for field-level permissions
   factory PermissionGuard.field({
     Key? key,
-    required String entityType,
     required String fieldName,
-    required String action,
+    required String action, // 'read' or 'edit'
     required Widget child,
     Widget? fallback,
   }) {
     return PermissionGuard(
       key: key,
-      entityType: entityType,
       action: action,
       child: child,
       fallback: fallback,
@@ -42,109 +35,214 @@ class PermissionGuard extends StatefulWidget {
     );
   }
 
-  @override
-  State<PermissionGuard> createState() => _PermissionGuardState();
-}
-
-class _PermissionGuardState extends State<PermissionGuard> {
-  bool? _hasPermission;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkPermission();
+  /// Factory for create permission
+  factory PermissionGuard.create({
+    Key? key,
+    required Widget child,
+    Widget? fallback,
+  }) {
+    return PermissionGuard(
+      key: key,
+      action: 'create',
+      child: child,
+      fallback: fallback,
+    );
   }
 
-  @override
-  void didUpdateWidget(PermissionGuard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    
-    // Re-check permission if relevant parameters changed
-    if (oldWidget.entityType != widget.entityType ||
-        oldWidget.action != widget.action ||
-        oldWidget.entityId != widget.entityId ||
-        oldWidget.fieldName != widget.fieldName) {
-      _checkPermission();
-    }
+  /// Factory for edit permission
+  factory PermissionGuard.edit({
+    Key? key,
+    required Widget child,
+    Widget? fallback,
+  }) {
+    return PermissionGuard(
+      key: key,
+      action: 'edit',
+      child: child,
+      fallback: fallback,
+    );
   }
 
-  Future<void> _checkPermission() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      bool hasPermission;
-      
-      if (widget.fieldName != null) {
-        // Field-level permission check
-        hasPermission = await PermissionService.instance.canAccessField(
-          widget.entityType,
-          widget.fieldName!,
-          widget.action,
-        );
-      } else {
-        // Entity-level permission check
-        hasPermission = await PermissionService.instance.canPerformAction(
-          widget.entityType,
-          widget.action,
-          entityId: widget.entityId,
-          entityData: widget.entityData,
-        );
-      }
-      
-      setState(() {
-        _hasPermission = hasPermission;
-        _isLoading = false;
-      });
-    } catch (e) {
-      // On error, default to no permission
-      setState(() {
-        _hasPermission = false;
-        _isLoading = false;
-      });
-    }
+  /// Factory for delete permission
+  factory PermissionGuard.delete({
+    Key? key,
+    required Widget child,
+    Widget? fallback,
+  }) {
+    return PermissionGuard(
+      key: key,
+      action: 'delete',
+      child: child,
+      fallback: fallback,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const SizedBox.shrink(); // Don't show loading, just hide
-    }
+    return Consumer<PermissionsManager>(
+      builder: (context, permissionsManager, _) {
+        // If permissions aren't loaded yet, don't show anything
+        if (!permissionsManager.hasPermissions) {
+          return const SizedBox.shrink();
+        }
 
-    if (_hasPermission == true) {
-      return widget.child;
-    }
+        bool hasPermission = false;
 
-    return widget.fallback ?? const SizedBox.shrink();
+        if (fieldName != null) {
+          // Field-level permission check
+          switch (action) {
+            case 'read':
+            case 'view':
+              hasPermission = permissionsManager.permissions!.visibleFields.isEmpty ||
+                  permissionsManager.permissions!.visibleFields.contains(fieldName);
+              break;
+            case 'edit':
+            case 'write':
+              hasPermission = permissionsManager.permissions!.editableFields.contains(fieldName);
+              break;
+            case 'create':
+              hasPermission = permissionsManager.permissions!.creatableFields.contains(fieldName);
+              break;
+            default:
+              hasPermission = false;
+          }
+        } else {
+          // Entity-level permission check
+          switch (action) {
+            case 'create':
+              hasPermission = permissionsManager.canCreate;
+              break;
+            case 'read':
+            case 'view':
+              hasPermission = true; // Reading is generally allowed if user has access
+              break;
+            case 'edit':
+            case 'update':
+              hasPermission = permissionsManager.canEdit;
+              break;
+            case 'delete':
+              hasPermission = permissionsManager.canDelete;
+              break;
+            case 'restore':
+              hasPermission = permissionsManager.canRestore;
+              break;
+            case 'view_deleted':
+              hasPermission = permissionsManager.canViewDeleted;
+              break;
+            default:
+              hasPermission = false;
+          }
+        }
+
+        if (hasPermission) {
+          return child;
+        }
+
+        return fallback ?? const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+/// Simple permission checking utilities
+class PermissionUtils {
+  /// Check if user can perform an action
+  static bool canPerformAction(PermissionsManager manager, String action) {
+    if (!manager.hasPermissions) return false;
+
+    switch (action) {
+      case 'create':
+        return manager.canCreate;
+      case 'read':
+      case 'view':
+        return true; // Reading is generally allowed
+      case 'edit':
+      case 'update':
+        return manager.canEdit;
+      case 'delete':
+        return manager.canDelete;
+      case 'restore':
+        return manager.canRestore;
+      case 'view_deleted':
+        return manager.canViewDeleted;
+      default:
+        return false;
+    }
+  }
+
+  /// Check if user can access a field
+  static bool canAccessField(PermissionsManager manager, String fieldName, String action) {
+    if (!manager.hasPermissions) return false;
+
+    switch (action) {
+      case 'read':
+      case 'view':
+        return manager.permissions!.visibleFields.isEmpty ||
+            manager.permissions!.visibleFields.contains(fieldName);
+      case 'edit':
+      case 'write':
+        return manager.permissions!.editableFields.contains(fieldName);
+      case 'create':
+        return manager.permissions!.creatableFields.contains(fieldName);
+      default:
+        return false;
+    }
+  }
+
+  /// Get all actions a user can perform
+  static List<String> getAllowedActions(PermissionsManager manager) {
+    if (!manager.hasPermissions) return [];
+
+    final actions = <String>[];
+    
+    if (manager.canCreate) actions.add('create');
+    if (manager.canEdit) actions.add('edit');
+    if (manager.canDelete) actions.add('delete');
+    if (manager.canRestore) actions.add('restore');
+    if (manager.canViewDeleted) actions.add('view_deleted');
+
+    return actions;
   }
 }
 
 /// Mixin for pages that need permission checking
 mixin PermissionMixin<T extends StatefulWidget> on State<T> {
-  bool _permissionsLoaded = false;
-  ComputedPermissions? _userPermissions;
+  PermissionsManager? _permissionsManager;
 
-  Future<void> initializePermissions() async {
-    _userPermissions = await PermissionService.instance.getComputedPermissions();
-    setState(() => _permissionsLoaded = true);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _permissionsManager = Provider.of<PermissionsManager>(context, listen: false);
   }
 
-  bool get permissionsLoaded => _permissionsLoaded;
-  ComputedPermissions? get userPermissions => _userPermissions;
+  /// Check if user can perform an action
+  bool canPerformAction(String action) {
+    if (_permissionsManager == null) return false;
+    return PermissionUtils.canPerformAction(_permissionsManager!, action);
+  }
 
-  Future<bool> checkEntityPermission(String entityType, String action, {
-    String? entityId,
-    Map<String, dynamic>? entityData,
-  }) async {
-    return await PermissionService.instance.canPerformAction(
-      entityType,
-      action,
-      entityId: entityId,
-      entityData: entityData,
+  /// Check if user can access a field
+  bool canAccessField(String fieldName, String action) {
+    if (_permissionsManager == null) return false;
+    return PermissionUtils.canAccessField(_permissionsManager!, fieldName, action);
+  }
+
+  /// Check if user has any permissions loaded
+  bool get hasPermissions => _permissionsManager?.hasPermissions ?? false;
+
+  /// Get all actions user can perform
+  List<String> get allowedActions {
+    if (_permissionsManager == null) return [];
+    return PermissionUtils.getAllowedActions(_permissionsManager!);
+  }
+
+  /// Show permission denied message
+  void showPermissionDenied([String? message]) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message ?? 'Permission denied'),
+        backgroundColor: Colors.red,
+      ),
     );
-  }
-
-  Future<bool> checkFieldPermission(String entityType, String fieldName, String action) async {
-    return await PermissionService.instance.canAccessField(entityType, fieldName, action);
   }
 }

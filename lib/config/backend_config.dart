@@ -1,136 +1,203 @@
 // lib/config/backend_config.dart
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Clean Encore-only backend configuration
 class BackendConfig {
-  // Encore Backend Configuration
-  static const String encoreProductionUrl = 'https://applink.fieldx.gr/api/'; // Replace with your actual Encore app URL
-  static const String encoreStagingUrl = 'https://applink.fieldx.gr/api/'; // Optional staging URL
-  static const String encoreLocalUrl = 'http://localhost:4000'; // For local development
-  
-  // EspoCRM Backend Configuration  
-  static const String espoCrmUrl = 'https://your-espocrm-domain.com'; // Replace with your EspoCRM URL
+  // Encore Backend URLs for different environments
+  static const String productionUrl = 'https://applink.fieldx.gr/api';
+  static const String stagingUrl = 'https://staging.fieldx.gr/api'; // Optional staging
+  static const String developmentUrl = 'http://localhost:4000'; // Local development
   
   // Default settings
-  static const String defaultBackend = 'encore';
-  static const String defaultTenant = 'default';
-  static const bool defaultIsDevelopment = true; // Set to false for production
+  static const String defaultTenant = 'applink'; // Default tenant
+  static const String defaultEnvironment = 'development';
+  
+  // Environment types
+  static const String envDevelopment = 'development';
+  static const String envStaging = 'staging';
+  static const String envProduction = 'production';
 
-  /// Get the current backend type
-  static Future<String> getBackendType() async {
+  /// Get the current environment
+  static Future<String> getEnvironment() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('selectedBackend') ?? defaultBackend;
+    return prefs.getString('environment') ?? defaultEnvironment;
   }
 
-  /// Set the backend type
-  static Future<void> setBackendType(String backend) async {
+  /// Set the environment (development/staging/production)
+  static Future<void> setEnvironment(String environment) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('selectedBackend', backend);
+    await prefs.setString('environment', environment);
   }
 
-  /// Get the API base URL based on current backend
+  /// Get the API base URL based on current environment
   static Future<String> getApiBaseUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    final backend = await getBackendType();
+    final environment = await getEnvironment();
     
-    if (backend == 'encore') {
-      final isDevelopment = prefs.getBool('isDevelopment') ?? defaultIsDevelopment;
-      return isDevelopment ? encoreLocalUrl : encoreProductionUrl;
-    } else {
-      return prefs.getString('crmDomain') ?? espoCrmUrl;
+    switch (environment) {
+      case envProduction:
+        return productionUrl;
+      case envStaging:
+        return stagingUrl;
+      case envDevelopment:
+      default:
+        return developmentUrl;
     }
   }
 
-  /// Configure Encore backend settings
-  static Future<void> configureEncore({
-    String? apiUrl,
-    String? tenant,
-    bool? isDevelopment,
-  }) async {
+  /// Get the current tenant
+  static Future<String> getTenant() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    if (apiUrl != null) {
-      await prefs.setString('encoreApiUrl', apiUrl);
-    }
-    
+    return prefs.getString('selectedTenant') ?? defaultTenant;
+  }
+
+  /// Set the tenant for multi-tenant setups
+  static Future<void> setTenant(String tenant) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedTenant', tenant);
+  }
+
+  /// Check if we're in development mode
+  static Future<bool> isDevelopment() async {
+    final environment = await getEnvironment();
+    return environment == envDevelopment;
+  }
+
+  /// Configure for development environment
+  static Future<void> configureDevelopment({String? tenant}) async {
+    await setEnvironment(envDevelopment);
     if (tenant != null) {
-      await prefs.setString('selectedTenant', tenant);
+      await setTenant(tenant);
     }
-    
-    if (isDevelopment != null) {
-      await prefs.setBool('isDevelopment', isDevelopment);
-    }
-    
-    await setBackendType('encore');
   }
 
-  /// Configure EspoCRM backend settings
-  static Future<void> configureEspoCRM({
-    String? crmDomain,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    if (crmDomain != null) {
-      await prefs.setString('crmDomain', crmDomain);
+  /// Configure for staging environment
+  static Future<void> configureStaging({String? tenant}) async {
+    await setEnvironment(envStaging);
+    if (tenant != null) {
+      await setTenant(tenant);
     }
-    
-    await setBackendType('espocrm');
   }
 
-  /// Get Encore-specific settings
-  static Future<Map<String, dynamic>> getEncoreSettings() async {
+  /// Configure for production environment
+  static Future<void> configureProduction({String? tenant}) async {
+    await setEnvironment(envProduction);
+    if (tenant != null) {
+      await setTenant(tenant);
+    }
+  }
+
+  /// Get all current settings
+  static Future<Map<String, dynamic>> getSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final environment = await getEnvironment();
+    final tenant = await getTenant();
+    final apiUrl = await getApiBaseUrl();
+    
     return {
-      'apiUrl': prefs.getString('encoreApiUrl') ?? encoreProductionUrl,
-      'tenant': prefs.getString('selectedTenant') ?? defaultTenant,
-      'isDevelopment': prefs.getBool('isDevelopment') ?? defaultIsDevelopment,
+      'environment': environment,
+      'tenant': tenant,
+      'apiBaseUrl': apiUrl,
+      'isDevelopment': environment == envDevelopment,
+      'isProduction': environment == envProduction,
+      'isStaging': environment == envStaging,
     };
   }
 
-  /// Get EspoCRM-specific settings
-  static Future<Map<String, dynamic>> getEspoCRMSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    return {
-      'crmDomain': prefs.getString('crmDomain') ?? espoCrmUrl,
-    };
-  }
-
-  /// Initialize default configuration
+  /// Initialize default configuration on first app launch
   static Future<void> initializeDefaults() async {
     final prefs = await SharedPreferences.getInstance();
     
-    // Set backend type if not set
-    if (!prefs.containsKey('selectedBackend')) {
-      await prefs.setString('selectedBackend', defaultBackend);
+    // Set environment if not set
+    if (!prefs.containsKey('environment')) {
+      await prefs.setString('environment', defaultEnvironment);
     }
     
-    // Set Encore defaults if not set
-    if (!prefs.containsKey('encoreApiUrl')) {
-      await prefs.setString('encoreApiUrl', encoreProductionUrl);
-    }
-    
+    // Set tenant if not set
     if (!prefs.containsKey('selectedTenant')) {
       await prefs.setString('selectedTenant', defaultTenant);
     }
     
-    if (!prefs.containsKey('isDevelopment')) {
-      await prefs.setBool('isDevelopment', defaultIsDevelopment);
-    }
+    // Clean up old EspoCRM/backend switching keys
+    await _cleanupOldKeys(prefs);
+  }
+
+  /// Clean up old SharedPreferences keys from the previous messy architecture
+  static Future<void> _cleanupOldKeys(SharedPreferences prefs) async {
+    final keysToRemove = [
+      'selectedBackend',      // Old backend switching
+      'crmDomain',           // EspoCRM URL
+      'encoreApiUrl',        // Old Encore URL key
+      'isDevelopment',       // Old boolean, now using environment string
+    ];
     
-    // Set EspoCRM defaults if not set
-    if (!prefs.containsKey('crmDomain')) {
-      await prefs.setString('crmDomain', espoCrmUrl);
+    for (final key in keysToRemove) {
+      if (prefs.containsKey(key)) {
+        await prefs.remove(key);
+      }
     }
   }
 
-  /// Get all current settings for debugging
-  static Future<Map<String, dynamic>> getAllSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+  /// Get auth headers with tenant information (for API calls)
+  static Future<Map<String, String>> getDefaultHeaders() async {
+    final tenant = await getTenant();
+    
     return {
-      'selectedBackend': prefs.getString('selectedBackend'),
-      'encoreApiUrl': prefs.getString('encoreApiUrl'),
-      'selectedTenant': prefs.getString('selectedTenant'),
-      'isDevelopment': prefs.getBool('isDevelopment'),
-      'crmDomain': prefs.getString('crmDomain'),
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (tenant.isNotEmpty) 'X-Tenant': tenant,
     };
+  }
+
+  /// Get API URL for a specific endpoint
+  static Future<String> getEndpointUrl(String endpoint) async {
+    final baseUrl = await getApiBaseUrl();
+    // Remove leading slash from endpoint if present
+    final cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    return '$baseUrl/$cleanEndpoint';
+  }
+
+  /// Get debug information for troubleshooting
+  static Future<Map<String, dynamic>> getDebugInfo() async {
+    final settings = await getSettings();
+    final headers = await getDefaultHeaders();
+    
+    return {
+      'settings': settings,
+      'defaultHeaders': headers,
+      'availableEnvironments': [envDevelopment, envStaging, envProduction],
+      'urlMapping': {
+        envDevelopment: developmentUrl,
+        envStaging: stagingUrl,
+        envProduction: productionUrl,
+      },
+    };
+  }
+
+  /// Validate current configuration
+  static Future<bool> validateConfiguration() async {
+    try {
+      final environment = await getEnvironment();
+      final tenant = await getTenant();
+      final apiUrl = await getApiBaseUrl();
+      
+      // Check if environment is valid
+      if (![envDevelopment, envStaging, envProduction].contains(environment)) {
+        return false;
+      }
+      
+      // Check if tenant is not empty
+      if (tenant.isEmpty) {
+        return false;
+      }
+      
+      // Check if API URL is valid
+      if (apiUrl.isEmpty || !Uri.tryParse(apiUrl)!.isAbsolute) {
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }

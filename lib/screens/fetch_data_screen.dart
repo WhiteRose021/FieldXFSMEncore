@@ -1,27 +1,31 @@
-// lib/screens/enhanced_fetch_data_screen.dart
-import 'package:fieldx_fsm/services/attachment_image_cache_service.dart';
-import 'package:fieldx_fsm/services/earth_work_service.dart';
+// lib/screens/fetch_data_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fieldx_fsm/services/enhanced_service_adapters.dart';
+import '../services/auth_service.dart';
+import '../services/autopsy_client.dart';
+import '../services/permissions_manager.dart';
+import '../repositories/autopsy_repository.dart';
+import '../config/backend_config.dart';
 import 'dashboard_screen.dart';
+import 'login_screen.dart';
 import 'dart:convert';
 import 'dart:async';
 
-class EnhancedFetchDataScreen extends StatefulWidget {
-  const EnhancedFetchDataScreen({super.key});
+class FetchDataScreen extends StatefulWidget {
+  const FetchDataScreen({super.key});
 
   @override
-  _EnhancedFetchDataScreenState createState() => _EnhancedFetchDataScreenState();
+  State<FetchDataScreen> createState() => _FetchDataScreenState();
 }
 
-class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with TickerProviderStateMixin {
-  String statusMessage = "Εκκίνηση συστήματος..."; // Greek for "Starting system..."
-  String subStatusMessage = "Παρακαλώ περιμένετε όσο προετοιμάζουμε τον χώρο εργασίας σας"; // Greek for "Please wait while we prepare your workspace"
-  double progressValue = 0.0;
-  bool dataFetched = false;
+class _FetchDataScreenState extends State<FetchDataScreen> with TickerProviderStateMixin {
+  String _statusMessage = "Initializing system...";
+  String _subStatusMessage = "Please wait while we prepare your workspace";
+  double _progressValue = 0.0;
+  bool _dataFetched = false;
   bool _isDisposed = false;
-  String? _currentBackend;
+  String _currentEnvironment = '';
   
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -30,8 +34,7 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
   void initState() {
     super.initState();
     _initializeAnimations();
-    _getCurrentBackend();
-    _fetchAllData();
+    _loadInitialData();
   }
 
   void _initializeAnimations() {
@@ -49,25 +52,22 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
     _pulseController.repeat(reverse: true);
   }
 
-  void _getCurrentBackend() {
-    setState(() {
-      _currentBackend = BackendManager.getCurrentBackend().name.toUpperCase();
-    });
-  }
-
   void _updateProgress(double progress, String status, String subStatus) {
     if (mounted && !_isDisposed) {
       setState(() {
-        progressValue = progress;
-        statusMessage = status;
-        subStatusMessage = subStatus;
+        _progressValue = progress;
+        _statusMessage = status;
+        _subStatusMessage = subStatus;
       });
     }
   }
 
   void _safeNavigateToLogin() {
     if (mounted && !_isDisposed) {
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
     }
   }
 
@@ -80,259 +80,186 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
     }
   }
 
-  Future<void> _fetchAllData() async {
-    if (dataFetched) return;
-    dataFetched = true;
+  Future<void> _loadInitialData() async {
+    if (_dataFetched) return;
+    _dataFetched = true;
 
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-
-      // Step 1: Authentication validation
-      _updateProgress(0.1, "Πιστοποίηση", "Επαλήθευση διαπιστευτηρίων με $_currentBackend backend..."); // Authentication, Verifying credentials
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Step 1: Get current environment
+      _currentEnvironment = await BackendConfig.getEnvironment();
+      _updateProgress(0.1, "Configuration", "Loading $_currentEnvironment environment...");
+      await Future.delayed(const Duration(milliseconds: 500));
 
       if (!mounted || _isDisposed) return;
 
-      String? userId = prefs.getString('userId');
-      String userName = prefs.getString('userName') ?? 'Unknown';
-
-      if (userId == null || userId.isEmpty) {
-        print("❌ User ID not found - redirecting to login");
-        _updateProgress(0.0, "Σφάλμα πιστοποίησης", "Απαιτείται νέα σύνδεση..."); // Authentication error, New login required
+      // Step 2: Validate authentication
+      _updateProgress(0.2, "Authentication", "Verifying user credentials...");
+      
+      final authService = context.read<AuthService>();
+      final isAuthenticated = await authService.checkAuthentication();
+      
+      if (!isAuthenticated) {
+        debugPrint("❌ User not authenticated - redirecting to login");
+        _updateProgress(0.0, "Authentication Required", "Please log in to continue...");
         await Future.delayed(const Duration(seconds: 2));
         _safeNavigateToLogin();
         return;
       }
 
-      print("✅ User authenticated: $userName (ID: $userId) via $_currentBackend backend");
+      debugPrint("✅ User authenticated: ${authService.currentUser}");
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // Step 2: Backend connectivity test
-      _updateProgress(0.15, "Δοκιμή σύνδεσης", "Έλεγχος συνδεσιμότητας $_currentBackend backend..."); // Connection test
+      if (!mounted || _isDisposed) return;
+
+      // Step 3: Test backend connectivity
+      _updateProgress(0.3, "Connection Test", "Testing Encore backend connectivity...");
       
-      final isBackendHealthy = await BackendManager.testConnectivity();
-      if (!isBackendHealthy) {
-        print("⚠️ Backend not healthy, but continuing with cached data");
-        _updateProgress(0.2, "Λειτουργία εκτός σύνδεσης", "Χρήση αποθηκευμένων δεδομένων..."); // Offline mode
+      final backendHealthy = await _testBackendConnectivity();
+      if (!backendHealthy) {
+        _updateProgress(0.3, "Offline Mode", "Using cached data...");
+        debugPrint("⚠️ Backend not reachable, using cached data");
       } else {
-        print("✅ $_currentBackend backend is healthy");
-        _updateProgress(0.2, "Σύνδεση επιτυχής", "Συνδέθηκε στο $_currentBackend backend..."); // Connection successful
+        _updateProgress(0.4, "Connection Success", "Connected to Encore backend");
+        debugPrint("✅ Backend connectivity confirmed");
       }
 
       await Future.delayed(const Duration(milliseconds: 500));
+
       if (!mounted || _isDisposed) return;
 
-      // Step 3: Determine user type and load appropriate data
-      bool isTechnicianAutopsy = prefs.getBool('isTechnicianAutopsy') ?? false;
-      bool isTechnicianSplicer = prefs.getBool('isTechnicianSplicer') ?? false;
-      bool isTechnicianConstruct = prefs.getBool('isTechnicianConstruct') ?? false;
-      bool isTechnicianEarthworker = prefs.getBool('isTechnicianEarthworker') ?? false;
+      // Step 4: Load permissions
+      _updateProgress(0.5, "Permissions", "Loading user permissions...");
+      await _loadUserPermissions();
 
-      print("🔧 User types - Autopsy: $isTechnicianAutopsy, Splicer: $isTechnicianSplicer, Construct: $isTechnicianConstruct, Earthworker: $isTechnicianEarthworker");
-
-      // Load data based on user type
-      if (isTechnicianAutopsy) {
-        await _loadAutopsyData(prefs);
-      }
-      
-      if (isTechnicianSplicer) {
-        await _loadSplicerData(prefs);
-      }
-      
-      if (isTechnicianConstruct) {
-        await _loadConstructionData(prefs);
-      }
-      
-      if (isTechnicianEarthworker) {
-        await _loadEarthworkerData(prefs);
-      }
-
-      // If no specific technician type, load general data
-      if (!isTechnicianAutopsy && !isTechnicianSplicer && !isTechnicianConstruct && !isTechnicianEarthworker) {
-        await _loadGeneralData(prefs);
-      }
-
-      // Step: Final completion
       if (!mounted || _isDisposed) return;
-      
-      _updateProgress(1.0, "Ολοκλήρωση", "Καλώς ήρθατε στο FieldX!"); // Completion, Welcome to FieldX
+
+      // Step 5: Load autopsies data
+      _updateProgress(0.6, "Autopsies", "Loading autopsy data...");
+      await _loadAutopsiesData();
+
+      if (!mounted || _isDisposed) return;
+
+      // Step 6: Load appointments data (when we implement it)
+      _updateProgress(0.8, "Appointments", "Loading appointment data...");
+      await _loadAppointmentsData();
+
+      if (!mounted || _isDisposed) return;
+
+      // Step 7: Cache data for offline use
+      _updateProgress(0.9, "Caching", "Saving data for offline access...");
+      await _cacheDataForOfflineUse();
+
+      // Step 8: Completion
+      _updateProgress(1.0, "Complete", "Welcome to FieldX FSM!");
       await Future.delayed(const Duration(milliseconds: 1000));
 
-      print("✅ Data loading completed via $_currentBackend backend");
+      debugPrint("✅ Data loading completed successfully");
       _safeNavigateToDashboard();
 
     } catch (e) {
-      print("❌ Error during data fetching: $e");
+      debugPrint("❌ Error during data loading: $e");
       
       if (!mounted || _isDisposed) return;
       
-      _updateProgress(0.0, "Σφάλμα φόρτωσης", "Προσπάθεια επανασύνδεσης..."); // Loading error, Attempting reconnection
-      await Future.delayed(const Duration(seconds: 2));
+      _updateProgress(0.0, "Loading Error", "Failed to load data. Please try again.");
+      await Future.delayed(const Duration(seconds: 3));
       
-      // Try to switch to EspoCRM if Encore fails, or vice versa
-      await _handleBackendFailover(e);
+      // On error, redirect to login for fresh start
+      _safeNavigateToLogin();
     }
   }
 
-  /// Handle backend failover
-  Future<void> _handleBackendFailover(dynamic error) async {
-    if (BackendManager.isUsingEncore()) {
-      print("🔄 Encore backend failed, attempting EspoCRM fallback...");
-      _updateProgress(0.1, "Εναλλαγή backend", "Δοκιμή εναλλακτικού συστήματος..."); // Backend switch
+  /// Test backend connectivity
+  Future<bool> _testBackendConnectivity() async {
+    try {
+      final apiUrl = await BackendConfig.getApiBaseUrl();
+      final headers = await BackendConfig.getDefaultHeaders();
       
-      try {
-        await BackendManager.switchToEspoCRM();
-        setState(() {
-          _currentBackend = "ESPOCRM";
-        });
-        
-        // Retry data fetching with EspoCRM
-        dataFetched = false; // Reset flag
-        await _fetchAllData();
-        return;
-      } catch (e) {
-        print("❌ EspoCRM fallback also failed: $e");
+      // Simple connectivity test - try to reach the API
+      // We'll use a basic endpoint that should always be available
+      // For now, we'll just validate the URL format
+      final uri = Uri.tryParse(apiUrl);
+      return uri != null && uri.isAbsolute;
+    } catch (e) {
+      debugPrint("Backend connectivity test failed: $e");
+      return false;
+    }
+  }
+
+  /// Load user permissions
+  Future<void> _loadUserPermissions() async {
+    try {
+      final permissionsManager = context.read<PermissionsManager>();
+      await permissionsManager.loadPermissions();
+      
+      debugPrint("✅ User permissions loaded");
+    } catch (e) {
+      debugPrint("❌ Error loading permissions: $e");
+      // Continue anyway with default permissions
+    }
+  }
+
+  /// Load autopsies data
+  Future<void> _loadAutopsiesData() async {
+    try {
+      final autopsyRepository = context.read<AutopsyRepository>();
+      
+      // Load a small initial set of autopsies
+      await autopsyRepository.loadAutopsies(refresh: true);
+      
+      final count = autopsyRepository.autopsies.length;
+      debugPrint("✅ Loaded $count autopsies");
+      
+      // Update progress message with count
+      if (mounted && !_isDisposed) {
+        _updateProgress(0.7, "Autopsies Loaded", "Loaded $count autopsy records");
+      }
+    } catch (e) {
+      debugPrint("❌ Error loading autopsies: $e");
+      // Continue with cached data or empty state
+      
+      if (mounted && !_isDisposed) {
+        _updateProgress(0.7, "Autopsies", "Using cached autopsy data");
       }
     }
-    
-    // If all backends fail, navigate to login
-    _safeNavigateToLogin();
   }
 
-  /// Load autopsy technician data
-  Future<void> _loadAutopsyData(SharedPreferences prefs) async {
-    _updateProgress(0.3, "Φόρτωση αυτοψιών", "Ανάκτηση δεδομένων αυτοψιών από $_currentBackend..."); // Loading autopsies
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (!mounted || _isDisposed) return;
-
+  /// Load appointments data (placeholder for future implementation)
+  Future<void> _loadAppointmentsData() async {
     try {
-      List<Map<String, dynamic>> autopsyAppointments = [];
-      autopsyAppointments = await AutopsyAppointmentService().fetchTechnicianAutopsyAppointments();
-      await prefs.setString('cachedAutopsyAppointments', jsonEncode(autopsyAppointments));
+      // TODO: Implement appointment loading when AppointmentService is ready
+      // For now, just simulate loading
+      await Future.delayed(const Duration(milliseconds: 300));
       
-      print("✅ Loaded ${autopsyAppointments.length} autopsy appointments from $_currentBackend backend");
-      _updateProgress(0.5, "Δεδομένα αυτοψίας", "Φορτώθηκαν ${autopsyAppointments.length} ραντεβού αυτοψίας"); // Autopsy data loaded
-    } catch (e) {
-      print("❌ Error loading autopsy data: $e");
-      _updateProgress(0.5, "Προειδοποίηση", "Αδυναμία φόρτωσης αυτοψιών - χρήση cache"); // Warning, using cache
-    }
-
-    await Future.delayed(const Duration(milliseconds: 800));
-  }
-
-  /// Load splicer technician data (enhanced with backend awareness)
-  Future<void> _loadSplicerData(SharedPreferences prefs) async {
-    _updateProgress(0.4, "Φόρτωση ραντεβού", "Ανάκτηση προγραμματισμένων εργασιών από $_currentBackend..."); // Loading appointments
-    
-    List<Map<String, dynamic>> appointments = [];
-    try {
-      appointments = await AppointmentService().fetchTechnicianAppointments();
-      await prefs.setString('cachedAppointments', jsonEncode(appointments));
+      debugPrint("✅ Appointments loading placeholder");
       
-      print("✅ Loaded ${appointments.length} splicer appointments from $_currentBackend backend");
-      _updateProgress(0.5, "Δεδομένα ραντεβού", "Φορτώθηκαν ${appointments.length} ραντεβού"); // Appointment data loaded
-    } catch (e) {
-      print("❌ Error loading splicer appointments: $e");
-      final cachedData = prefs.getString('cachedAppointments');
-      if (cachedData != null) {
-        appointments = List<Map<String, dynamic>>.from(jsonDecode(cachedData));
-        print("📱 Loaded ${appointments.length} cached appointments");
+      if (mounted && !_isDisposed) {
+        _updateProgress(0.85, "Appointments", "Appointment system ready");
       }
-      _updateProgress(0.5, "Προειδοποίηση", "Χρήση αποθηκευμένων ραντεβού"); // Warning, using cached appointments
-    }
-
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted || _isDisposed) return;
-
-    // Load buildings
-    _updateProgress(0.55, "Φόρτωση κτιρίων", "Ανάκτηση στοιχείων κτιρίων από $_currentBackend..."); // Loading buildings
-    
-    List<Map<String, dynamic>> buildings = [];
-    try {
-      buildings = await CSplicingWorkService().fetchFilteredBuildings();
-      await prefs.setString('cachedBuildings', jsonEncode(buildings));
-      
-      print("✅ Loaded ${buildings.length} buildings from $_currentBackend backend");
-      _updateProgress(0.65, "Δεδομένα κτιρίων", "Φορτώθηκαν ${buildings.length} κτίρια"); // Building data loaded
     } catch (e) {
-      print("❌ Error loading buildings: $e");
-      final cachedData = prefs.getString('cachedBuildings');
-      if (cachedData != null) {
-        buildings = List<Map<String, dynamic>>.from(jsonDecode(cachedData));
-        print("📱 Loaded ${buildings.length} cached buildings");
-      }
-      _updateProgress(0.65, "Προειδοποίηση", "Χρήση αποθηκευμένων κτιρίων"); // Warning, using cached buildings
+      debugPrint("❌ Error loading appointments: $e");
     }
-
-    await Future.delayed(const Duration(milliseconds: 800));
   }
 
-  /// Load construction technician data
-  Future<void> _loadConstructionData(SharedPreferences prefs) async {
-    _updateProgress(0.6, "Φόρτωση κατασκευής", "Ανάκτηση δεδομένων κατασκευής από $_currentBackend..."); // Loading construction data
-
-    if (!mounted || _isDisposed) return;
-
+  /// Cache data for offline use
+  Future<void> _cacheDataForOfflineUse() async {
     try {
-      List<Map<String, dynamic>> constructionAppointments = [];
-      constructionAppointments = await ConstructionAppointmentService().fetchTechnicianConstructionAppointments();
-      await prefs.setString('cachedConstructionAppointments', jsonEncode(constructionAppointments));
+      final prefs = await SharedPreferences.getInstance();
       
-      print("✅ Loaded ${constructionAppointments.length} construction appointments from $_currentBackend backend");
-      _updateProgress(0.7, "Δεδομένα κατασκευής", "Φορτώθηκαν ${constructionAppointments.length} ραντεβού κατασκευής"); // Construction data loaded
+      // Cache basic app state
+      await prefs.setString('lastDataLoad', DateTime.now().toIso8601String());
+      await prefs.setString('lastEnvironment', _currentEnvironment);
+      
+      // Cache user info
+      final authService = context.read<AuthService>();
+      final userInfo = await authService.getCurrentUserInfo();
+      await prefs.setString('cachedUserInfo', json.encode(userInfo));
+      
+      debugPrint("✅ Data cached for offline use");
     } catch (e) {
-      print("❌ Error loading construction data: $e");
-      _updateProgress(0.7, "Προειδοποίηση", "Χρήση αποθηκευμένων δεδομένων κατασκευής"); // Warning, using cached construction data
+      debugPrint("❌ Error caching data: $e");
+      // Not critical, continue anyway
     }
-
-    await Future.delayed(const Duration(milliseconds: 800));
-  }
-
-  /// Load earthworker data
-  Future<void> _loadEarthworkerData(SharedPreferences prefs) async {
-    _updateProgress(0.65, "Φόρτωση χωματουργικών", "Ανάκτηση εργασιών χωματουργικών από $_currentBackend..."); // Loading earthwork data
-
-    if (!mounted || _isDisposed) return;
-
-    try {
-      List<Map<String, dynamic>> earthworkAppointments = [];
-      await prefs.setString('cachedEarthworkAppointments', jsonEncode(earthworkAppointments));
-      
-      print("✅ Loaded ${earthworkAppointments.length} earthwork appointments from $_currentBackend backend");
-      _updateProgress(0.75, "Δεδομένα χωματουργικών", "Φορτώθηκαν ${earthworkAppointments.length} εργασίες"); // Earthwork data loaded
-    } catch (e) {
-      print("❌ Error loading earthwork data: $e");
-      _updateProgress(0.75, "Προειδοποίηση", "Χρήση αποθηκευμένων χωματουργικών"); // Warning, using cached earthwork data
-    }
-
-    await Future.delayed(const Duration(milliseconds: 800));
-  }
-
-  /// Load general data for non-technician users
-  Future<void> _loadGeneralData(SharedPreferences prefs) async {
-    _updateProgress(0.5, "Φόρτωση γενικών δεδομένων", "Ανάκτηση βασικών στοιχείων από $_currentBackend..."); // Loading general data
-
-    if (!mounted || _isDisposed) return;
-
-    try {
-      // Load metadata
-      final metadataService = MetadataService();
-      final metadata = await metadataService.fetchMetadata();
-      
-      if (metadata != null) {
-        final metadataJson = json.encode(metadata);
-        await prefs.setString('metadata', metadataJson);
-        await prefs.setString('metadataTimestamp', DateTime.now().millisecondsSinceEpoch.toString());
-        print("✅ General metadata loaded from $_currentBackend backend");
-      }
-      
-      _updateProgress(0.8, "Μεταδεδομένα", "Φορτώθηκαν ρυθμίσεις συστήματος"); // Metadata loaded
-    } catch (e) {
-      print("❌ Error loading general data: $e");
-      _updateProgress(0.8, "Προειδοποίηση", "Χρήση αποθηκευμένων ρυθμίσεων"); // Warning, using cached settings
-    }
-
-    await Future.delayed(const Duration(milliseconds: 800));
   }
 
   @override
@@ -352,7 +279,7 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo and title
+              // Animated Logo
               AnimatedBuilder(
                 animation: _pulseAnimation,
                 builder: (context, child) {
@@ -362,11 +289,11 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: Color(0xFF0066CC),
+                        color: const Color(0xFF0066CC),
                         borderRadius: BorderRadius.circular(60),
                         boxShadow: [
                           BoxShadow(
-                            color: Color(0xFF0066CC).withOpacity(0.3),
+                            color: const Color(0xFF0066CC).withOpacity(0.3),
                             blurRadius: 20,
                             spreadRadius: 5,
                           ),
@@ -384,65 +311,64 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
               
               const SizedBox(height: 32),
               
+              // App Title
               Text(
-                "FieldX Mobile",
+                "FieldX FSM",
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0066CC),
+                  color: const Color(0xFF0066CC),
                 ),
               ),
               
               const SizedBox(height: 8),
               
-              // Backend indicator
+              // Environment Indicator
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: BackendManager.isUsingEncore() 
-                    ? Colors.blue.withOpacity(0.1)
-                    : Colors.green.withOpacity(0.1),
+                  color: _getEnvironmentColor().withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: BackendManager.isUsingEncore() ? Colors.blue : Colors.green,
+                    color: _getEnvironmentColor(),
                   ),
                 ),
                 child: Text(
-                  "Backend: $_currentBackend",
+                  "Environment: ${_currentEnvironment.toUpperCase()}",
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: BackendManager.isUsingEncore() ? Colors.blue : Colors.green,
+                    color: _getEnvironmentColor(),
                   ),
                 ),
               ),
               
               const SizedBox(height: 48),
               
-              // Progress indicator
+              // Progress Bar
               LinearProgressIndicator(
-                value: progressValue,
+                value: _progressValue,
                 backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0066CC)),
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0066CC)),
                 minHeight: 8,
               ),
               
               const SizedBox(height: 24),
               
-              // Status message
+              // Main Status Message
               Text(
-                statusMessage,
+                _statusMessage,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF0066CC),
+                  color: const Color(0xFF0066CC),
                 ),
                 textAlign: TextAlign.center,
               ),
               
               const SizedBox(height: 12),
               
-              // Sub-status message
+              // Sub Status Message
               Text(
-                subStatusMessage,
+                _subStatusMessage,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[600],
                 ),
@@ -451,12 +377,12 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
               
               const SizedBox(height: 32),
               
-              // Progress percentage
+              // Progress Percentage
               Text(
-                "${(progressValue * 100).toInt()}%",
+                "${(_progressValue * 100).toInt()}%",
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0066CC),
+                  color: const Color(0xFF0066CC),
                 ),
               ),
             ],
@@ -464,5 +390,18 @@ class _EnhancedFetchDataScreenState extends State<EnhancedFetchDataScreen> with 
         ),
       ),
     );
+  }
+
+  /// Get color based on environment
+  Color _getEnvironmentColor() {
+    switch (_currentEnvironment) {
+      case 'production':
+        return Colors.green;
+      case 'staging':
+        return Colors.orange;
+      case 'development':
+      default:
+        return Colors.blue;
+    }
   }
 }

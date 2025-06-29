@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/backend_config.dart';
 import '../services/auth_service.dart';
+import '../services/permissions_manager.dart';
+import '../repositories/autopsy_repository.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,13 +14,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _selectedBackend = 'encore';
-  bool _isDevelopment = true;
-  String _encoreUrl = '';
+  String _selectedEnvironment = 'development';
   String _tenant = '';
-  String _espoCrmUrl = '';
   bool _isLoading = false;
   String _testResult = '';
+  Map<String, dynamic> _currentSettings = {};
+  Map<String, dynamic> _debugInfo = {};
 
   @override
   void initState() {
@@ -28,16 +29,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadCurrentSettings() async {
     try {
-      final backend = await BackendConfig.getBackendType();
-      final encoreSettings = await BackendConfig.getEncoreSettings();
-      final espoCrmSettings = await BackendConfig.getEspoCRMSettings();
+      final environment = await BackendConfig.getEnvironment();
+      final tenant = await BackendConfig.getTenant();
+      final settings = await BackendConfig.getSettings();
+      final debugInfo = await BackendConfig.getDebugInfo();
 
       setState(() {
-        _selectedBackend = backend;
-        _isDevelopment = encoreSettings['isDevelopment'] ?? true;
-        _encoreUrl = encoreSettings['apiUrl'] ?? '';
-        _tenant = encoreSettings['tenant'] ?? '';
-        _espoCrmUrl = espoCrmSettings['crmDomain'] ?? '';
+        _selectedEnvironment = environment;
+        _tenant = tenant;
+        _currentSettings = settings;
+        _debugInfo = debugInfo;
       });
     } catch (e) {
       debugPrint('Error loading settings: $e');
@@ -51,17 +52,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      if (_selectedBackend == 'encore') {
-        await BackendConfig.configureEncore(
-          apiUrl: _encoreUrl,
-          tenant: _tenant,
-          isDevelopment: _isDevelopment,
-        );
-      } else {
-        await BackendConfig.configureEspoCRM(
-          crmDomain: _espoCrmUrl,
-        );
+      // Configure based on selected environment
+      switch (_selectedEnvironment) {
+        case 'production':
+          await BackendConfig.configureProduction(tenant: _tenant);
+          break;
+        case 'staging':
+          await BackendConfig.configureStaging(tenant: _tenant);
+          break;
+        case 'development':
+        default:
+          await BackendConfig.configureDevelopment(tenant: _tenant);
+          break;
       }
+
+      // Reload settings to reflect changes
+      await _loadCurrentSettings();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,25 +105,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // First save the current settings
       await _saveSettings();
 
-      // Get the API URL
+      // Validate configuration
+      final isValid = await BackendConfig.validateConfiguration();
       final apiUrl = await BackendConfig.getApiBaseUrl();
+      final headers = await BackendConfig.getDefaultHeaders();
       
       setState(() {
-        _testResult = 'Testing connection to: $apiUrl\n';
-      });
-
-      // Test basic connectivity (you can expand this)
-      final uri = Uri.parse(apiUrl);
-      
-      setState(() {
-        _testResult += 'Backend: $_selectedBackend\n';
-        _testResult += 'URL: $apiUrl\n';
-        if (_selectedBackend == 'encore') {
-          _testResult += 'Tenant: $_tenant\n';
-          _testResult += 'Development: $_isDevelopment\n';
+        _testResult = 'Connection Test Results:\n\n';
+        _testResult += 'Environment: $_selectedEnvironment\n';
+        _testResult += 'API URL: $apiUrl\n';
+        _testResult += 'Tenant: $_tenant\n';
+        _testResult += 'Configuration Valid: ${isValid ? "✅ Yes" : "❌ No"}\n\n';
+        
+        if (isValid) {
+          _testResult += 'Headers:\n';
+          headers.forEach((key, value) {
+            _testResult += '  $key: $value\n';
+          });
+          _testResult += '\n✅ Configuration looks good!\n';
+          _testResult += 'Try logging in to test authentication.';
+        } else {
+          _testResult += '❌ Configuration validation failed.\n';
+          _testResult += 'Please check your settings.';
         }
-        _testResult += '\n✅ Configuration looks good!\n';
-        _testResult += 'Try logging in to test authentication.';
       });
 
     } catch (e) {
@@ -133,11 +143,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _clearCache() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Clear permissions cache
+      final permissionsManager = context.read<PermissionsManager>();
+      permissionsManager.clearCache();
+
+      // Clear autopsy repository cache
+      final autopsyRepository = context.read<AutopsyRepository>();
+      autopsyRepository.clearCaches();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cache cleared successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error clearing cache: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Backend Settings'),
+        title: const Text('FieldX Settings'),
+        backgroundColor: _getEnvironmentColor(),
+        foregroundColor: Colors.white,
         actions: [
           Consumer<AuthService>(
             builder: (context, authService, child) {
@@ -157,12 +209,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Backend Selection
+            // Current User Info
+            Consumer<AuthService>(
+              builder: (context, authService, child) {
+                if (authService.isAuthenticated) {
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Current User',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text('User: ${authService.currentUser ?? "Unknown"}'),
+                          Text('Type: ${authService.userType ?? "Unknown"}'),
+                          if (authService.tenantName?.isNotEmpty == true)
+                            Text('Tenant: ${authService.tenantName}'),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Environment Settings
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -170,134 +251,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Backend Type',
+                      'Environment Configuration',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _selectedBackend,
+                      value: _selectedEnvironment,
                       items: const [
-                        DropdownMenuItem(value: 'encore', child: Text('Encore Backend')),
-                        DropdownMenuItem(value: 'espocrm', child: Text('EspoCRM Backend')),
+                        DropdownMenuItem(value: 'development', child: Text('Development (Local)')),
+                        DropdownMenuItem(value: 'staging', child: Text('Staging')),
+                        DropdownMenuItem(value: 'production', child: Text('Production')),
                       ],
                       onChanged: (value) {
                         setState(() {
-                          _selectedBackend = value!;
+                          _selectedEnvironment = value!;
                         });
                       },
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'Environment',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.cloud,
+                          color: _getEnvironmentColor(),
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      initialValue: _tenant,
+                      decoration: const InputDecoration(
+                        labelText: 'Tenant',
+                        hintText: 'applink, beyond, etc.',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.business),
+                      ),
+                      onChanged: (value) => _tenant = value,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Current Settings Display
+                    if (_currentSettings.isNotEmpty) ...[
+                      const Divider(),
+                      const Text(
+                        'Current Settings:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text('API URL: ${_currentSettings['apiBaseUrl'] ?? "Not set"}'),
+                      Text('Environment: ${_currentSettings['environment'] ?? "Not set"}'),
+                      Text('Tenant: ${_currentSettings['tenant'] ?? "Not set"}'),
+                    ],
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            // Encore Settings
-            if (_selectedBackend == 'encore') ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Encore Settings',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        initialValue: _encoreUrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Encore API URL',
-                          hintText: 'https://your-app.encr.app or http://localhost:4000',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) => _encoreUrl = value,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        initialValue: _tenant,
-                        decoration: const InputDecoration(
-                          labelText: 'Tenant',
-                          hintText: 'default',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) => _tenant = value,
-                      ),
-                      const SizedBox(height: 16),
-                      SwitchListTile(
-                        title: const Text('Development Mode'),
-                        subtitle: const Text('Use local development settings'),
-                        value: _isDevelopment,
-                        onChanged: (value) {
-                          setState(() {
-                            _isDevelopment = value;
-                            if (value) {
-                              _encoreUrl = 'http://localhost:4000';
-                            } else {
-                              _encoreUrl = 'https://your-app.encr.app';
-                            }
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-
-            // EspoCRM Settings
-            if (_selectedBackend == 'espocrm') ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'EspoCRM Settings',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        initialValue: _espoCrmUrl,
-                        decoration: const InputDecoration(
-                          labelText: 'EspoCRM Domain',
-                          hintText: 'https://your-espocrm.com',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) => _espoCrmUrl = value,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 24),
-
             // Action Buttons
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _saveSettings,
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Save Settings'),
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save),
+                    label: const Text('Save Settings'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _getEnvironmentColor(),
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: OutlinedButton(
+                  child: OutlinedButton.icon(
                     onPressed: _isLoading ? null : _testConnection,
-                    child: const Text('Test Connection'),
+                    icon: const Icon(Icons.wifi_tethering),
+                    label: const Text('Test Connection'),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Cache Management
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isLoading ? null : _clearCache,
+                icon: const Icon(Icons.clear_all),
+                label: const Text('Clear Cache'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.orange,
+                ),
+              ),
             ),
 
             // Test Results
@@ -314,12 +366,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _testResult,
-                        style: const TextStyle(fontFamily: 'monospace'),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _testResult,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ],
                   ),
+                ),
+              ),
+            ],
+
+            // Debug Information (Expandable)
+            if (_debugInfo.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: ExpansionTile(
+                  title: const Text(
+                    'Debug Information',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  leading: const Icon(Icons.bug_report),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _debugInfo.toString(),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -327,5 +424,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  /// Get color based on environment
+  Color _getEnvironmentColor() {
+    switch (_selectedEnvironment) {
+      case 'production':
+        return Colors.green;
+      case 'staging':
+        return Colors.orange;
+      case 'development':
+      default:
+        return Colors.blue;
+    }
   }
 }

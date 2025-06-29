@@ -1,6 +1,6 @@
 // lib/app/routes.dart
 import 'package:flutter/material.dart';
-import '../screens/enhanced_login_screen.dart';
+import '../screens/login_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/autopsies_screen.dart';
 import '../screens/autopsy_detail_screen.dart';
@@ -17,7 +17,7 @@ class AppRoutes {
     switch (settings.name) {
       case '/login':
         return MaterialPageRoute(
-          builder: (_) => const EnhancedLoginScreen(),
+          builder: (_) => const LoginScreen(),
           settings: settings,
         );
       
@@ -63,7 +63,7 @@ class AppRoutes {
   }
 
   static Map<String, WidgetBuilder> get routes => {
-    login: (context) => const EnhancedLoginScreen(),
+    login: (context) => const LoginScreen(),
     dashboard: (context) => const DashboardScreen(),
     autopsies: (context) => const AutopsiesScreen(),
     settings: (context) => const SettingsScreen(),

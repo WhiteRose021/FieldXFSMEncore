@@ -1,9 +1,11 @@
-// lib/screens/autopsy_list_screen.dart
+// lib/screens/autopsy_list_screen.dart - FIXED VERSION
+// Updated imports and types to use AutopsyService
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../repositories/autopsy_repository.dart';
 import '../services/permissions_manager.dart';
-import '../services/autopsy_client.dart';
+import '../services/autopsy_service.dart';  // FIXED: Updated import
 import '../models/autopsy_models.dart';
 import 'autopsies_screen.dart';
 
@@ -14,15 +16,17 @@ class AutopsyListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<AutopsyClient>(
-          create: (_) => AutopsyClient(baseUrl: 'https://applink.fieldx.gr/api'),
+        // FIXED: Updated to use AutopsyService with no parameters
+        Provider<AutopsyService>(
+          create: (_) => AutopsyService(),
         ),
         ChangeNotifierProvider<PermissionsManager>(
           create: (_) => PermissionsManager(),
         ),
-        ChangeNotifierProxyProvider<AutopsyClient, AutopsyRepository>(
+        // FIXED: Updated type references
+        ChangeNotifierProxyProvider<AutopsyService, AutopsyRepository>(
           create: (context) => AutopsyRepository(
-            client: context.read<AutopsyClient>(),
+            client: context.read<AutopsyService>(),
           ),
           update: (context, client, previous) =>
               previous ?? AutopsyRepository(client: client),
@@ -53,17 +57,17 @@ class AutopsyListItem extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (autopsy.autopsycustomername?.isNotEmpty == true)
-              Text('Customer: ${autopsy.autopsycustomername}'),
+            if (autopsy.autopsyCustomerName?.isNotEmpty == true)
+              Text('Customer: ${autopsy.autopsyCustomerName}'),
             if (autopsy.fullAddress.isNotEmpty)
               Text('Address: ${autopsy.fullAddress}'),
           ],
         ),
-        trailing: autopsy.autopsystatus != null
+        trailing: autopsy.autopsyStatus != null
             ? Chip(
                 label: Text(
-                  AutopsyOptions.getStatusLabel(autopsy.autopsystatus) ?? 
-                  autopsy.autopsystatus!,
+                  AutopsyOptions.getStatusLabel(autopsy.autopsyStatus) ?? 
+                  autopsy.autopsyStatus!,
                   style: const TextStyle(fontSize: 12),
                 ),
               )

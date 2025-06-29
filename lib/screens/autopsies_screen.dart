@@ -640,15 +640,15 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                         ),
                       ),
                     ),
-                    _buildStatusBadge(autopsy.autopsystatus ?? 'unknown'),
+                    _buildStatusBadge(autopsy.autopsyStatus ?? 'unknown'),
                   ],
                 ),
                 const SizedBox(height: 12),
                 // Customer info
-                if (autopsy.autopsycustomername?.isNotEmpty == true)
+                if (autopsy.autopsyCustomerName?.isNotEmpty == true)
                   _buildInfoRow(
                     'Customer',
-                    autopsy.autopsycustomername!,
+                    autopsy.autopsyCustomerName!,
                     Icons.person_outline,
                   ),
                 // Address
@@ -661,7 +661,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                 // Category and date
                 Row(
                   children: [
-                    if (autopsy.autopsycategory?.isNotEmpty == true) ...[
+                    if (autopsy.autopsyCategory?.isNotEmpty == true) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
@@ -669,7 +669,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          autopsy.autopsycategory!,
+                          autopsy.autopsyCategory!,
                           style: const TextStyle(
                             color: primaryBlue,
                             fontWeight: FontWeight.w600,
@@ -681,7 +681,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                     ],
                     if (autopsy.createdAt != null)
                       Text(
-                        _formatDate(autopsy.createdAt!),
+                        _formatDate(autopsy.createdAt! as DateTime),
                         style: const TextStyle(
                           color: secondaryText,
                           fontSize: 11,

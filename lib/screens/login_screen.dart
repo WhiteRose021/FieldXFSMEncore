@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   
   bool _isLoading = false;
   bool _obscurePassword = true;
-  String _selectedBackend = 'encore';
+  String _currentEnvironment = 'development';
   String _apiUrl = '';
   
   late AnimationController _logoAnimationController;
@@ -53,11 +53,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   Future<void> _loadSettings() async {
     try {
-      final backend = await BackendConfig.getBackendType();
+      final environment = await BackendConfig.getEnvironment();
       final apiUrl = await BackendConfig.getApiBaseUrl();
       
       setState(() {
-        _selectedBackend = backend;
+        _currentEnvironment = environment;
         _apiUrl = apiUrl;
       });
     } catch (e) {
@@ -149,31 +149,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
-  Future<void> _switchBackend() async {
-    final newBackend = _selectedBackend == 'encore' ? 'espocrm' : 'encore';
-    
-    try {
-      if (newBackend == 'encore') {
-        await BackendConfig.configureEncore();
-      } else {
-        await BackendConfig.configureEspoCRM();
-      }
-      
-      await _loadSettings();
-      _showSuccessSnackBar('Switched to ${newBackend.toUpperCase()} backend');
-    } catch (e) {
-      _showErrorSnackBar('Error switching backend: $e');
-    }
-  }
-
-  Widget _buildBackendIndicator() {
+  Widget _buildEnvironmentIndicator() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _selectedBackend == 'encore' ? Colors.blue.shade100 : Colors.orange.shade100,
+        color: _getEnvironmentColor().withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: _selectedBackend == 'encore' ? Colors.blue : Colors.orange,
+          color: _getEnvironmentColor(),
           width: 1,
         ),
       ),
@@ -181,17 +164,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            _selectedBackend == 'encore' ? Icons.cloud : Icons.business,
+            _getEnvironmentIcon(),
             size: 16,
-            color: _selectedBackend == 'encore' ? Colors.blue : Colors.orange,
+            color: _getEnvironmentColor(),
           ),
           const SizedBox(width: 4),
           Text(
-            _selectedBackend.toUpperCase(),
+            _currentEnvironment.toUpperCase(),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: _selectedBackend == 'encore' ? Colors.blue : Colors.orange,
+              color: _getEnvironmentColor(),
             ),
           ),
         ],
@@ -218,6 +201,30 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
+  Color _getEnvironmentColor() {
+    switch (_currentEnvironment) {
+      case 'production':
+        return Colors.green;
+      case 'staging':
+        return Colors.orange;
+      case 'development':
+      default:
+        return Colors.blue;
+    }
+  }
+
+  IconData _getEnvironmentIcon() {
+    switch (_currentEnvironment) {
+      case 'production':
+        return Icons.public;
+      case 'staging':
+        return Icons.engineering;
+      case 'development':
+      default:
+        return Icons.developer_mode;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -239,14 +246,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // Backend switcher
+          // Settings menu
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.grey),
             onSelected: (String result) {
               switch (result) {
-                case 'switch_backend':
-                  _switchBackend();
-                  break;
                 case 'settings':
                   Navigator.push(
                     context,
@@ -262,26 +266,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                value: 'switch_backend',
-                child: Row(
-                  children: [
-                    Icon(
-                      _selectedBackend == 'encore' ? Icons.business : Icons.cloud,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text('Switch to ${_selectedBackend == 'encore' ? 'EspoCRM' : 'Encore'}'),
-                  ],
-                ),
-              ),
               const PopupMenuItem<String>(
                 value: 'settings',
                 child: Row(
                   children: [
                     Icon(Icons.settings, size: 20),
                     SizedBox(width: 8),
-                    Text('Backend Settings'),
+                    Text('Environment Settings'),
                   ],
                 ),
               ),
@@ -307,10 +298,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Backend and API indicators
+                // Environment and API indicators
                 Column(
                   children: [
-                    _buildBackendIndicator(),
+                    _buildEnvironmentIndicator(),
                     const SizedBox(height: 8),
                     _buildApiUrlIndicator(),
                   ],
@@ -351,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     ],
                                   ),
                                   child: const Icon(
-                                    Icons.lock,
+                                    Icons.engineering,
                                     color: Colors.white,
                                     size: 40,
                                   ),
@@ -363,7 +354,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           
                           // Title
                           const Text(
-                            'Welcome Back',
+                            'FieldX FSM',
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -489,34 +480,18 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           const SizedBox(height: 16),
                           
                           // Quick actions
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              TextButton.icon(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                                  );
-                                },
-                                icon: const Icon(Icons.settings, size: 16),
-                                label: const Text('Settings'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF1565C0),
-                                ),
-                              ),
-                              TextButton.icon(
-                                onPressed: _switchBackend,
-                                icon: Icon(
-                                  _selectedBackend == 'encore' ? Icons.business : Icons.cloud,
-                                  size: 16,
-                                ),
-                                label: Text('Switch to ${_selectedBackend == 'encore' ? 'CRM' : 'Encore'}'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.orange,
-                                ),
-                              ),
-                            ],
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                              );
+                            },
+                            icon: const Icon(Icons.settings, size: 16),
+                            label: const Text('Environment Settings'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF1565C0),
+                            ),
                           ),
                         ],
                       ),
@@ -528,7 +503,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 
                 // Version info
                 Text(
-                  'FieldX FSM v1.0.0',
+                  'FieldX FSM v1.0.0 • Encore Backend',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade500,

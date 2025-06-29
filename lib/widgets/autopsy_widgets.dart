@@ -1,4 +1,6 @@
-// lib/widgets/autopsy_widgets.dart
+// lib/widgets/autopsy_widgets.dart - FIXED VERSION
+// Updated field names to match cleaned autopsy_models.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/autopsy_models.dart';
@@ -24,7 +26,7 @@ class AutopsyStatusDropdown extends StatelessWidget {
     final statusOptions = options ?? AutopsyOptions.statusOptions;
 
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value, // Fixed: use initialValue instead of value
       onChanged: enabled ? onChanged : null,
       decoration: InputDecoration(
         hintText: hint ?? 'Select status',
@@ -91,7 +93,7 @@ class AutopsyCategoryDropdown extends StatelessWidget {
     final categoryOptions = options ?? AutopsyOptions.categoryOptions;
 
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value, // Fixed: use initialValue instead of value
       onChanged: enabled ? onChanged : null,
       decoration: InputDecoration(
         hintText: hint ?? 'Select category',
@@ -157,18 +159,22 @@ class AutopsyCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  AutopsyStatusBadge(status: autopsy.autopsystatus),
+                  // FIXED: autopsystatus → autopsyStatus
+                  AutopsyStatusBadge(status: autopsy.autopsyStatus),
                 ],
               ),
               const SizedBox(height: 12),
-              if (autopsy.autopsycustomername?.isNotEmpty == true)
-                _buildInfoRow('Customer', autopsy.autopsycustomername!, Icons.person),
+              // FIXED: autopsycustomername → autopsyCustomerName
+              if (autopsy.autopsyCustomerName?.isNotEmpty == true)
+                _buildInfoRow('Customer', autopsy.autopsyCustomerName!, Icons.person),
               if (autopsy.fullAddress.isNotEmpty)
                 _buildInfoRow('Address', autopsy.fullAddress, Icons.location_on),
-              if (autopsy.autopsycategory?.isNotEmpty == true)
-                _buildInfoRow('Category', autopsy.autopsycategory!, Icons.category),
+              // FIXED: autopsycategory → autopsyCategory
+              if (autopsy.autopsyCategory?.isNotEmpty == true)
+                _buildInfoRow('Category', autopsy.autopsyCategory!, Icons.category),
+              // FIXED: Handle String createdAt instead of DateTime
               if (autopsy.createdAt != null)
-                _buildInfoRow('Created', _formatDate(autopsy.createdAt!), Icons.calendar_today),
+                _buildInfoRow('Created', _formatDateString(autopsy.createdAt!), Icons.calendar_today),
               if (showActions) ...[
                 const SizedBox(height: 12),
                 Row(
@@ -228,18 +234,25 @@ class AutopsyCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
+  // FIXED: Handle String date instead of DateTime
+  String _formatDateString(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
 
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
+      if (difference.inDays == 0) {
+        return 'Today';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      // If parsing fails, return the original string
+      return dateString;
     }
   }
 }
@@ -260,7 +273,7 @@ class AutopsyStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
+        color: statusColor.withValues(alpha: 0.1), // Fixed: withOpacity → withValues
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: statusColor, width: 1),
       ),
@@ -333,8 +346,9 @@ class AutopsyFormFields extends StatelessWidget {
           },
         ),
         const SizedBox(height: 16),
+        // FIXED: Controller keys updated to camelCase
         TextFormField(
-          controller: controllers['autopsycustomername'],
+          controller: controllers['autopsyCustomerName'],
           decoration: const InputDecoration(
             labelText: 'Customer Name',
             border: OutlineInputBorder(),
@@ -343,7 +357,7 @@ class AutopsyFormFields extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: controllers['autopsycustomeremail'],
+          controller: controllers['autopsyCustomerEmail'],
           decoration: const InputDecoration(
             labelText: 'Customer Email',
             border: OutlineInputBorder(),
@@ -359,7 +373,7 @@ class AutopsyFormFields extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: controllers['autopsycustomermobile'],
+          controller: controllers['autopsyCustomerMobile'],
           decoration: const InputDecoration(
             labelText: 'Customer Mobile',
             border: OutlineInputBorder(),
@@ -369,7 +383,7 @@ class AutopsyFormFields extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: controllers['autopsyordernumber'],
+          controller: controllers['autopsyOrderNumber'],
           decoration: const InputDecoration(
             labelText: 'Order Number',
             border: OutlineInputBorder(),
@@ -378,7 +392,7 @@ class AutopsyFormFields extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: controllers['autopsybid'],
+          controller: controllers['autopsyBid'],
           decoration: const InputDecoration(
             labelText: 'BID',
             border: OutlineInputBorder(),
@@ -387,7 +401,7 @@ class AutopsyFormFields extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: controllers['autopsycab'],
+          controller: controllers['autopsyCab'],
           decoration: const InputDecoration(
             labelText: 'CAB',
             border: OutlineInputBorder(),
@@ -396,7 +410,7 @@ class AutopsyFormFields extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: controllers['technicalcheckstatus'],
+          controller: controllers['technicalCheckStatus'],
           decoration: const InputDecoration(
             labelText: 'Technical Check Status',
             border: OutlineInputBorder(),
@@ -405,7 +419,7 @@ class AutopsyFormFields extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: controllers['autopsycomments'],
+          controller: controllers['autopsyComments'],
           decoration: const InputDecoration(
             labelText: 'Comments',
             border: OutlineInputBorder(),
