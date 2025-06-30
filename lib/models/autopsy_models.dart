@@ -3,9 +3,6 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
-import '../utils/json_converters.dart';
-
-
 part 'autopsy_models.g.dart';
 
 // ============= MAIN AUTOPSY MODEL =============
@@ -47,12 +44,14 @@ class CAutopsy {
   final String? billingStatus;
   final String? malfunctionStatus;
   final bool? autopsyOutOfSystem;
+  @JsonKey(fromJson: _stringToDoubleNullable)
   final double? autopsyLatitude;
+  @JsonKey(fromJson: _stringToDoubleNullable)
   final double? autopsyLongitude;
   final String? autopsyTtlp;
   final String? autopsyTtllpppTest;
   final String? buildingId;
-  @BoolFromIntConverter()
+  @JsonKey(fromJson: _stringToBoolNullable)
   final bool? deleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -221,19 +220,25 @@ class CAutopsy {
 
 @JsonSerializable()
 class AutopsyResponse {
-  final List<CAutopsy> data;
+  @JsonKey(fromJson: _stringToInt)
   final int total;
+  final List<CAutopsy> data;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? page;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? limit;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? offset;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? totalActive;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? totalDeleted;
   final bool? permissionDenied;
   final String? error;
 
   AutopsyResponse({
-    required this.data,
     required this.total,
+    required this.data,
     this.page,
     this.limit,
     this.offset,
@@ -247,12 +252,53 @@ class AutopsyResponse {
   Map<String, dynamic> toJson() => _$AutopsyResponseToJson(this);
 }
 
+// Helper functions for string to int conversion
+int _stringToInt(dynamic value) {
+  if (value is int) return value;
+  if (value is String) return int.parse(value);
+  if (value is double) return value.toInt();
+  throw FormatException('Cannot convert $value to int');
+}
+
+int? _stringToIntNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is String) return value.isEmpty ? null : int.parse(value);
+  if (value is double) return value.toInt();
+  throw FormatException('Cannot convert $value to int');
+}
+
+// Helper functions for string to double conversion
+double? _stringToDoubleNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return value.isEmpty ? null : double.parse(value);
+  throw FormatException('Cannot convert $value to double');
+}
+
+// Helper functions for string to bool conversion
+bool? _stringToBoolNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is bool) return value;
+  if (value is int) return value == 1;
+  if (value is String) {
+    if (value.isEmpty) return null;
+    return value.toLowerCase() == 'true' || value == '1';
+  }
+  throw FormatException('Cannot convert $value to bool');
+}
+
 @JsonSerializable()
 class AutopsyListResponse {
   final List<CAutopsy> data;
+  @JsonKey(fromJson: _stringToInt)
   final int total;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? page;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? limit;
+  @JsonKey(fromJson: _stringToIntNullable)
   final int? offset;
   final bool? permissionDenied;
   final String? error;

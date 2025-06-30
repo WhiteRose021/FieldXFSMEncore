@@ -42,12 +42,12 @@ CAutopsy _$CAutopsyFromJson(Map<String, dynamic> json) => CAutopsy(
       billingStatus: json['billingStatus'] as String?,
       malfunctionStatus: json['malfunctionStatus'] as String?,
       autopsyOutOfSystem: json['autopsyOutOfSystem'] as bool?,
-      autopsyLatitude: (json['autopsyLatitude'] as num?)?.toDouble(),
-      autopsyLongitude: (json['autopsyLongitude'] as num?)?.toDouble(),
+      autopsyLatitude: _stringToDoubleNullable(json['autopsyLatitude']),
+      autopsyLongitude: _stringToDoubleNullable(json['autopsyLongitude']),
       autopsyTtlp: json['autopsyTtlp'] as String?,
       autopsyTtllpppTest: json['autopsyTtllpppTest'] as String?,
       buildingId: json['buildingId'] as String?,
-      deleted: const BoolFromIntConverter().fromJson(json['deleted']),
+      deleted: _stringToBoolNullable(json['deleted']),
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -100,7 +100,7 @@ Map<String, dynamic> _$CAutopsyToJson(CAutopsy instance) => <String, dynamic>{
       'autopsyTtlp': instance.autopsyTtlp,
       'autopsyTtllpppTest': instance.autopsyTtllpppTest,
       'buildingId': instance.buildingId,
-      'deleted': const BoolFromIntConverter().toJson(instance.deleted),
+      'deleted': instance.deleted,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
       'deletedAt': instance.deletedAt?.toIso8601String(),
@@ -108,23 +108,23 @@ Map<String, dynamic> _$CAutopsyToJson(CAutopsy instance) => <String, dynamic>{
 
 AutopsyResponse _$AutopsyResponseFromJson(Map<String, dynamic> json) =>
     AutopsyResponse(
+      total: _stringToInt(json['total']),
       data: (json['data'] as List<dynamic>)
           .map((e) => CAutopsy.fromJson(e as Map<String, dynamic>))
           .toList(),
-      total: (json['total'] as num).toInt(),
-      page: (json['page'] as num?)?.toInt(),
-      limit: (json['limit'] as num?)?.toInt(),
-      offset: (json['offset'] as num?)?.toInt(),
-      totalActive: (json['totalActive'] as num?)?.toInt(),
-      totalDeleted: (json['totalDeleted'] as num?)?.toInt(),
+      page: _stringToIntNullable(json['page']),
+      limit: _stringToIntNullable(json['limit']),
+      offset: _stringToIntNullable(json['offset']),
+      totalActive: _stringToIntNullable(json['totalActive']),
+      totalDeleted: _stringToIntNullable(json['totalDeleted']),
       permissionDenied: json['permissionDenied'] as bool?,
       error: json['error'] as String?,
     );
 
 Map<String, dynamic> _$AutopsyResponseToJson(AutopsyResponse instance) =>
     <String, dynamic>{
-      'data': instance.data,
       'total': instance.total,
+      'data': instance.data,
       'page': instance.page,
       'limit': instance.limit,
       'offset': instance.offset,
@@ -139,10 +139,10 @@ AutopsyListResponse _$AutopsyListResponseFromJson(Map<String, dynamic> json) =>
       data: (json['data'] as List<dynamic>)
           .map((e) => CAutopsy.fromJson(e as Map<String, dynamic>))
           .toList(),
-      total: (json['total'] as num).toInt(),
-      page: (json['page'] as num?)?.toInt(),
-      limit: (json['limit'] as num?)?.toInt(),
-      offset: (json['offset'] as num?)?.toInt(),
+      total: _stringToInt(json['total']),
+      page: _stringToIntNullable(json['page']),
+      limit: _stringToIntNullable(json['limit']),
+      offset: _stringToIntNullable(json['offset']),
       permissionDenied: json['permissionDenied'] as bool?,
       error: json['error'] as String?,
     );
