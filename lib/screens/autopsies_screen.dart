@@ -604,7 +604,38 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
     );
   }
 
+  Widget _buildRichLine(String label, String value,
+    {Color color = primaryText, FontWeight fontWeight = FontWeight.w500}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label: ',
+          style: TextStyle(
+            color: secondaryText,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 13,
+              fontWeight: fontWeight,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+
   Widget _buildAutopsyCard(CAutopsy autopsy) {
+    final statusColor = _getStatusColor(autopsy.autopsyStatus);
+    final statusLabel = _getStatusLabel(autopsy.autopsyStatus);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -623,73 +654,25 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
           borderRadius: BorderRadius.circular(16),
           onTap: () => _navigateToDetail(autopsy),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header row
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        autopsy.displayName ?? 'Autopsy ${autopsy.id}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: primaryText,
-                        ),
-                      ),
-                    ),
-                    _buildStatusBadge(autopsy.autopsyStatus ?? 'unknown'),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // Customer info
+                _buildRichLine('🔧 SR', autopsy.name ?? 'Χωρίς όνομα'),
+                const SizedBox(height: 6),
                 if (autopsy.autopsyCustomerName?.isNotEmpty == true)
-                  _buildInfoRow(
-                    'Customer',
-                    autopsy.autopsyCustomerName!,
-                    Icons.person_outline,
-                  ),
-                // Address
+                  _buildRichLine('👤 Πελάτης', autopsy.autopsyCustomerName ?? 'Χωρίς όνομα'),
+                if (autopsy.createdAt != null)
+                  _buildRichLine('🗓️ Ημερομηνία', _formatDate(autopsy.createdAt!)),
                 if (autopsy.fullAddress.isNotEmpty)
-                  _buildInfoRow(
-                    'Address',
-                    autopsy.fullAddress,
-                    Icons.location_on_outlined,
+                  _buildRichLine('📍 Διεύθυνση', autopsy.fullAddress),
+                if (autopsy.autopsyStatus != null)
+                  _buildRichLine(
+                    '📌 Κατάσταση',
+                    statusLabel,
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
                   ),
-                // Category and date
-                Row(
-                  children: [
-                    if (autopsy.autopsyCategory?.isNotEmpty == true) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: primaryBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          autopsy.autopsyCategory!,
-                          style: const TextStyle(
-                            color: primaryBlue,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                    if (autopsy.createdAt != null)
-                      Text(
-                        _formatDate(autopsy.createdAt! as DateTime),
-                        style: const TextStyle(
-                          color: secondaryText,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -697,6 +680,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
       ),
     );
   }
+
 
   Widget _buildStatusBadge(String status) {
     final color = _getStatusColor(status);

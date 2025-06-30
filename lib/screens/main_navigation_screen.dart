@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../repositories/autopsy_repository.dart';
 import '../services/permissions_manager.dart';
 import '../services/autopsy_service.dart';  // FIXED: Updated import
-import '../models/autopsy_models.dart';
 import 'autopsies_screen.dart';
 
 class MainNavigationScreen extends StatelessWidget {

@@ -3,12 +3,12 @@
 
 import 'package:flutter/material.dart';
 import '../models/autopsy_models.dart';
-import '../services/autopsy_service.dart';  // FIXED: Updated import
+import '../services/autopsy_service.dart';
 
 /// Repository for managing autopsy data and state
 /// Acts as an intermediary between UI and AutopsyService
 class AutopsyRepository extends ChangeNotifier {
-  final AutopsyService _client;  // FIXED: Updated type
+  final AutopsyService _client;
 
   List<CAutopsy> _autopsies = [];
   CAutopsy? _currentAutopsy;
@@ -24,7 +24,7 @@ class AutopsyRepository extends ChangeNotifier {
   String? _categoryFilter;
   bool _includeDeleted = false;
 
-  AutopsyRepository({required AutopsyService client}) : _client = client;  // FIXED: Updated type
+  AutopsyRepository({required AutopsyService client}) : _client = client;
 
   // Getters
   List<CAutopsy> get autopsies => List.unmodifiable(_autopsies);
@@ -35,7 +35,7 @@ class AutopsyRepository extends ChangeNotifier {
   int get currentPage => _currentPage;
   bool get hasMorePages => (_currentPage + 1) * _pageSize < _totalCount;
   
-  // ADDED: Missing getters for compatibility
+  // Added missing getters for compatibility
   bool get hasMore => hasMorePages;
   bool get isLoadingMore => _isLoading && _autopsies.isNotEmpty;
   
@@ -65,7 +65,7 @@ class AutopsyRepository extends ChangeNotifier {
         status: _statusFilter,
         category: _categoryFilter,
         includeDeleted: _includeDeleted,
-        orderBy: 'modifiedAt',
+        orderBy: 'modified_at', // FIXED: Use snake_case field name
         orderDirection: 'DESC',
       );
 
@@ -145,12 +145,12 @@ class AutopsyRepository extends ChangeNotifier {
     await loadAutopsies(refresh: true);
   }
 
-  /// ADDED: Clear search (alias for searchAutopsies with empty string)
+  /// Clear search (alias for searchAutopsies with empty string)
   Future<void> clearSearch() async {
     await searchAutopsies('');
   }
 
-  /// ADDED: Apply filters (combined method for compatibility)
+  /// Apply filters (combined method for compatibility)
   Future<void> applyFilters({String? status, String? category, String? search}) async {
     bool needsRefresh = false;
 
@@ -174,7 +174,7 @@ class AutopsyRepository extends ChangeNotifier {
     }
   }
 
-  /// ADDED: Clear caches method for compatibility
+  /// Clear caches method for compatibility
   Future<void> clearCaches() async {
     _autopsies.clear();
     _currentAutopsy = null;
@@ -291,12 +291,19 @@ class AutopsyRepository extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      final restoredAutopsy = await _client.restoreAutopsy(id);
+      // FIXED: Handle the restore operation properly
+      CAutopsy restoredAutopsy;
+      try {
+        restoredAutopsy = await _client.restoreAutopsy(id);
+      } catch (e) {
+        // Handle unimplemented error
+        throw AutopsyException(message: 'Restore functionality not available yet');
+      }
       
       // Update in the list
       final index = _autopsies.indexWhere((a) => a.id == id);
       if (index != -1) {
-        _autopsies[index] = restoredAutopsy;
+        _autopsies[index] = restoredAutopsy; // FIXED: Use the local variable
       }
 
       notifyListeners();

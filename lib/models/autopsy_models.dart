@@ -1,7 +1,10 @@
-// lib/models/autopsy_models.dart - CLEANED VERSION
-// Following FSM Architecture PLAN - Fixed duplicates and DateTime issues
+// lib/models/autopsy_models.dart - FIXED VERSION
+// Addresses all compilation errors
 
 import 'package:json_annotation/json_annotation.dart';
+
+import '../utils/json_converters.dart';
+
 
 part 'autopsy_models.g.dart';
 
@@ -11,288 +14,205 @@ part 'autopsy_models.g.dart';
 class CAutopsy {
   final String id;
   final String? name;
-  final String? displayName;
   final String? description;
-  final bool? deleted;
-  final String? createdAt;           // Changed: DateTime → String
-  final String? modifiedAt;          // Changed: DateTime → String  
-  final String? deletedAt;           // Changed: DateTime → String
-  final String? createdById;
-  final String? modifiedById;
-  final String? assignedUserId;
-  final String? tenantId;
-  final String? streamUpdatedAt;     // Changed: DateTime → String
-  final int? versionNumber;
-  final bool? isDeleted;
-  
-  // Address fields - cleaned duplicates
+  final String? displayName;
   final String? autopsyFullAddress;
   final String? autopsyStreet;
   final String? autopsyPostalCode;
   final String? autopsyMunicipality;
   final String? autopsyState;
   final String? autopsyCity;
+  final String? autopsyCustomerName;
+  final String? autopsyCustomerEmail;
+  final String? autopsyCustomerMobile;
+  final String? autopsyStatus;
+  final String? autopsyCategory;
+  final String? autopsyComments;
+  final String? technicalCheckStatus;
+  final String? assignedUserId;
   final String? address1;
   final String? address2;
   final String? city;
   final String? state;
   final String? postcode;
   final String? country;
-  
-  // Customer fields - removed duplicates
-  final String? autopsyCustomerName;      // Removed: autopsycustomername
-  final String? autopsyCustomerEmail;     // Removed: autopsycustomeremail
-  final String? autopsyCustomerMobile;    // Removed: autopsycustomermobile
-  final String? autopsyCustomerFloor;
-  
-  // Contact fields
-  final String? autopsyAge;
-  final String? autopsyAk;
-  final String? autopsyAdminEmail;
-  final String? autopsyAdminMobile;
-  final String? autopsyLandlinePhoneNumber;
-  final String? autopsyAdminLandline;
-  final String? adminAutopsyName;
-  
-  // Business fields - removed duplicates
-  final String? autopsyBid;              // Removed: autopsybid
-  final String? autopsyCab;              // Removed: autopsycab
-  final String? autopsyCategory;         // Removed: autopsycategory
-  final String? autopsyOrderNumber;      // Removed: autopsyordernumber
+  final String? autopsyOrderNumber;
+  final String? autopsyBid;
+  final String? autopsyCab;
   final String? autopsyPilot;
   final String? type;
-  
-  // Status fields - removed duplicates
-  final String? autopsyStatus;           // Removed: autopsystatus
-  final String? technicalCheckStatus;    // Removed: technicalcheckstatus
   final String? soilWorkStatus;
   final String? constructionStatus;
   final String? splicingStatus;
   final String? billingStatus;
   final String? malfunctionStatus;
-  
-  // Additional fields - removed duplicates
-  final String? autopsyComments;         // Removed: autopsycomments
-  final String? autopsyOutOfSystem;
+  final bool? autopsyOutOfSystem;
   final double? autopsyLatitude;
   final double? autopsyLongitude;
   final String? autopsyTtlp;
   final String? autopsyTtllpppTest;
   final String? buildingId;
+  @BoolFromIntConverter()
+  final bool? deleted;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final DateTime? deletedAt;
 
   CAutopsy({
     required this.id,
     this.name,
-    this.displayName,
     this.description,
-    this.deleted,
-    this.createdAt,
-    this.modifiedAt,
-    this.deletedAt,
-    this.createdById,
-    this.modifiedById,
-    this.assignedUserId,
-    this.tenantId,
-    this.streamUpdatedAt,
-    this.versionNumber,
-    this.isDeleted,
+    this.displayName,
     this.autopsyFullAddress,
     this.autopsyStreet,
     this.autopsyPostalCode,
     this.autopsyMunicipality,
     this.autopsyState,
     this.autopsyCity,
+    this.autopsyCustomerName,
+    this.autopsyCustomerEmail,
+    this.autopsyCustomerMobile,
+    this.autopsyStatus,
+    this.autopsyCategory,
+    this.autopsyComments,
+    this.technicalCheckStatus,
+    this.assignedUserId,
     this.address1,
     this.address2,
     this.city,
     this.state,
     this.postcode,
     this.country,
-    this.autopsyCustomerName,
-    this.autopsyCustomerEmail,
-    this.autopsyCustomerMobile,
-    this.autopsyCustomerFloor,
-    this.autopsyAge,
-    this.autopsyAk,
-    this.autopsyAdminEmail,
-    this.autopsyAdminMobile,
-    this.autopsyLandlinePhoneNumber,
-    this.autopsyAdminLandline,
-    this.adminAutopsyName,
+    this.autopsyOrderNumber,
     this.autopsyBid,
     this.autopsyCab,
-    this.autopsyCategory,
-    this.autopsyOrderNumber,
     this.autopsyPilot,
     this.type,
-    this.autopsyStatus,
-    this.technicalCheckStatus,
     this.soilWorkStatus,
     this.constructionStatus,
     this.splicingStatus,
     this.billingStatus,
     this.malfunctionStatus,
-    this.autopsyComments,
     this.autopsyOutOfSystem,
     this.autopsyLatitude,
     this.autopsyLongitude,
     this.autopsyTtlp,
     this.autopsyTtllpppTest,
     this.buildingId,
+    this.deleted,
+    this.createdAt,
+    this.updatedAt,
+    this.deletedAt,
   });
 
   factory CAutopsy.fromJson(Map<String, dynamic> json) => _$CAutopsyFromJson(json);
   Map<String, dynamic> toJson() => _$CAutopsyToJson(this);
 
-  // Computed properties - updated for cleaned fields
+  // Helper methods
+  String get effectiveDisplayName => displayName ?? name ?? autopsyCustomerName ?? 'Unnamed Autopsy';
+  
   String get fullAddress {
-    if (autopsyFullAddress?.isNotEmpty == true) return autopsyFullAddress!;
-    
-    final parts = <String>[];
-    if (address1?.isNotEmpty == true) parts.add(address1!);
-    if (address2?.isNotEmpty == true) parts.add(address2!);
-    if (city?.isNotEmpty == true) parts.add(city!);
-    if (state?.isNotEmpty == true) parts.add(state!);
-    if (postcode?.isNotEmpty == true) parts.add(postcode!);
-    return parts.join(', ');
+    final addressParts = [
+      autopsyFullAddress,
+      autopsyStreet,
+      autopsyCity,
+      autopsyState,
+      autopsyPostalCode,
+    ].where((part) => part != null && part.isNotEmpty).toList();
+    return addressParts.join(', ');
   }
 
-  String get statusDisplayName {
-    return AutopsyOptions.getStatusLabel(autopsyStatus) ?? 
-           autopsyStatus ?? 'Unknown';
-  }
-
-  String get categoryDisplayName {
-    return AutopsyOptions.getCategoryLabel(autopsyCategory) ?? 
-           autopsyCategory ?? 'Unknown';
-  }
-
-  bool get isActive => deleted != true && isDeleted != true;
-
-  String get effectiveDisplayName {
-    return displayName ?? name ?? autopsyCustomerName ?? 'Autopsy $id';
-  }
-
-  // Simplified copyWith method (much shorter now!)
   CAutopsy copyWith({
     String? id,
     String? name,
-    String? displayName,
     String? description,
-    bool? deleted,
-    String? createdAt,
-    String? modifiedAt,
-    String? deletedAt,
-    String? createdById,
-    String? modifiedById,
-    String? assignedUserId,
-    String? tenantId,
-    String? streamUpdatedAt,
-    int? versionNumber,
-    bool? isDeleted,
+    String? displayName,
     String? autopsyFullAddress,
     String? autopsyStreet,
     String? autopsyPostalCode,
     String? autopsyMunicipality,
     String? autopsyState,
     String? autopsyCity,
+    String? autopsyCustomerName,
+    String? autopsyCustomerEmail,
+    String? autopsyCustomerMobile,
+    String? autopsyStatus,
+    String? autopsyCategory,
+    String? autopsyComments,
+    String? technicalCheckStatus,
+    String? assignedUserId,
     String? address1,
     String? address2,
     String? city,
     String? state,
     String? postcode,
     String? country,
-    String? autopsyCustomerName,
-    String? autopsyCustomerEmail,
-    String? autopsyCustomerMobile,
-    String? autopsyCustomerFloor,
-    String? autopsyAge,
-    String? autopsyAk,
-    String? autopsyAdminEmail,
-    String? autopsyAdminMobile,
-    String? autopsyLandlinePhoneNumber,
-    String? autopsyAdminLandline,
-    String? adminAutopsyName,
+    String? autopsyOrderNumber,
     String? autopsyBid,
     String? autopsyCab,
-    String? autopsyCategory,
-    String? autopsyOrderNumber,
     String? autopsyPilot,
     String? type,
-    String? autopsyStatus,
-    String? technicalCheckStatus,
     String? soilWorkStatus,
     String? constructionStatus,
     String? splicingStatus,
     String? billingStatus,
     String? malfunctionStatus,
-    String? autopsyComments,
-    String? autopsyOutOfSystem,
+    bool? autopsyOutOfSystem,
     double? autopsyLatitude,
     double? autopsyLongitude,
     String? autopsyTtlp,
     String? autopsyTtllpppTest,
     String? buildingId,
+    bool? deleted,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? deletedAt,
   }) {
     return CAutopsy(
       id: id ?? this.id,
       name: name ?? this.name,
-      displayName: displayName ?? this.displayName,
       description: description ?? this.description,
-      deleted: deleted ?? this.deleted,
-      createdAt: createdAt ?? this.createdAt,
-      modifiedAt: modifiedAt ?? this.modifiedAt,
-      deletedAt: deletedAt ?? this.deletedAt,
-      createdById: createdById ?? this.createdById,
-      modifiedById: modifiedById ?? this.modifiedById,
-      assignedUserId: assignedUserId ?? this.assignedUserId,
-      tenantId: tenantId ?? this.tenantId,
-      streamUpdatedAt: streamUpdatedAt ?? this.streamUpdatedAt,
-      versionNumber: versionNumber ?? this.versionNumber,
-      isDeleted: isDeleted ?? this.isDeleted,
+      displayName: displayName ?? this.displayName,
       autopsyFullAddress: autopsyFullAddress ?? this.autopsyFullAddress,
       autopsyStreet: autopsyStreet ?? this.autopsyStreet,
       autopsyPostalCode: autopsyPostalCode ?? this.autopsyPostalCode,
       autopsyMunicipality: autopsyMunicipality ?? this.autopsyMunicipality,
       autopsyState: autopsyState ?? this.autopsyState,
       autopsyCity: autopsyCity ?? this.autopsyCity,
+      autopsyCustomerName: autopsyCustomerName ?? this.autopsyCustomerName,
+      autopsyCustomerEmail: autopsyCustomerEmail ?? this.autopsyCustomerEmail,
+      autopsyCustomerMobile: autopsyCustomerMobile ?? this.autopsyCustomerMobile,
+      autopsyStatus: autopsyStatus ?? this.autopsyStatus,
+      autopsyCategory: autopsyCategory ?? this.autopsyCategory,
+      autopsyComments: autopsyComments ?? this.autopsyComments,
+      technicalCheckStatus: technicalCheckStatus ?? this.technicalCheckStatus,
+      assignedUserId: assignedUserId ?? this.assignedUserId,
       address1: address1 ?? this.address1,
       address2: address2 ?? this.address2,
       city: city ?? this.city,
       state: state ?? this.state,
       postcode: postcode ?? this.postcode,
       country: country ?? this.country,
-      autopsyCustomerName: autopsyCustomerName ?? this.autopsyCustomerName,
-      autopsyCustomerEmail: autopsyCustomerEmail ?? this.autopsyCustomerEmail,
-      autopsyCustomerMobile: autopsyCustomerMobile ?? this.autopsyCustomerMobile,
-      autopsyCustomerFloor: autopsyCustomerFloor ?? this.autopsyCustomerFloor,
-      autopsyAge: autopsyAge ?? this.autopsyAge,
-      autopsyAk: autopsyAk ?? this.autopsyAk,
-      autopsyAdminEmail: autopsyAdminEmail ?? this.autopsyAdminEmail,
-      autopsyAdminMobile: autopsyAdminMobile ?? this.autopsyAdminMobile,
-      autopsyLandlinePhoneNumber: autopsyLandlinePhoneNumber ?? this.autopsyLandlinePhoneNumber,
-      autopsyAdminLandline: autopsyAdminLandline ?? this.autopsyAdminLandline,
-      adminAutopsyName: adminAutopsyName ?? this.adminAutopsyName,
+      autopsyOrderNumber: autopsyOrderNumber ?? this.autopsyOrderNumber,
       autopsyBid: autopsyBid ?? this.autopsyBid,
       autopsyCab: autopsyCab ?? this.autopsyCab,
-      autopsyCategory: autopsyCategory ?? this.autopsyCategory,
-      autopsyOrderNumber: autopsyOrderNumber ?? this.autopsyOrderNumber,
       autopsyPilot: autopsyPilot ?? this.autopsyPilot,
       type: type ?? this.type,
-      autopsyStatus: autopsyStatus ?? this.autopsyStatus,
-      technicalCheckStatus: technicalCheckStatus ?? this.technicalCheckStatus,
       soilWorkStatus: soilWorkStatus ?? this.soilWorkStatus,
       constructionStatus: constructionStatus ?? this.constructionStatus,
       splicingStatus: splicingStatus ?? this.splicingStatus,
       billingStatus: billingStatus ?? this.billingStatus,
       malfunctionStatus: malfunctionStatus ?? this.malfunctionStatus,
-      autopsyComments: autopsyComments ?? this.autopsyComments,
       autopsyOutOfSystem: autopsyOutOfSystem ?? this.autopsyOutOfSystem,
       autopsyLatitude: autopsyLatitude ?? this.autopsyLatitude,
       autopsyLongitude: autopsyLongitude ?? this.autopsyLongitude,
       autopsyTtlp: autopsyTtlp ?? this.autopsyTtlp,
       autopsyTtllpppTest: autopsyTtllpppTest ?? this.autopsyTtllpppTest,
       buildingId: buildingId ?? this.buildingId,
+      deleted: deleted ?? this.deleted,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 }
@@ -372,11 +292,14 @@ class SingleAutopsyResponse {
   final CAutopsy? data;
   final bool? permissionDenied;
   final String? error;
+  final bool? success; // FIXED: Added missing success parameter
 
   SingleAutopsyResponse({
     this.data,
     this.permissionDenied,
     this.error,
+    this.success, // FIXED: Added success parameter
+    String? message, // FIXED: Added optional message parameter
   });
 
   factory SingleAutopsyResponse.fromJson(Map<String, dynamic> json) => _$SingleAutopsyResponseFromJson(json);
@@ -395,6 +318,7 @@ class ListAutopsyParams {
   final String? status;
   final String? category;
   final bool? includeDeleted;
+  final bool? onlyDeleted; // FIXED: Added missing onlyDeleted property
 
   ListAutopsyParams({
     this.limit,
@@ -405,6 +329,7 @@ class ListAutopsyParams {
     this.status,
     this.category,
     this.includeDeleted,
+    this.onlyDeleted, // FIXED: Added onlyDeleted parameter
   });
 
   factory ListAutopsyParams.fromJson(Map<String, dynamic> json) => _$ListAutopsyParamsFromJson(json);
@@ -416,11 +341,13 @@ class SearchAutopsyParams {
   final String query;
   final int? limit;
   final int? offset;
+  final bool? includeDeleted; // FIXED: Added missing includeDeleted property
 
   SearchAutopsyParams({
     required this.query,
     this.limit,
     this.offset,
+    this.includeDeleted, // FIXED: Added includeDeleted parameter
   });
 
   factory SearchAutopsyParams.fromJson(Map<String, dynamic> json) => _$SearchAutopsyParamsFromJson(json);
@@ -455,6 +382,8 @@ class CreateAutopsyRequest {
   final String? autopsyOrderNumber;
   final String? autopsyBid;
   final String? autopsyCab;
+  final String? autopsyPilot;
+  final String? type;
 
   CreateAutopsyRequest({
     this.name,
@@ -483,6 +412,8 @@ class CreateAutopsyRequest {
     this.autopsyOrderNumber,
     this.autopsyBid,
     this.autopsyCab,
+    this.autopsyPilot,
+    this.type,
   });
 
   factory CreateAutopsyRequest.fromJson(Map<String, dynamic> json) => _$CreateAutopsyRequestFromJson(json);
@@ -640,24 +571,19 @@ class AutopsyCategoryOption {
 
 class AutopsyOptions {
   static final List<AutopsyStatusOption> statusOptions = [
-    AutopsyStatusOption(value: 'new', label: 'New', color: '#2196F3', order: 1),
-    AutopsyStatusOption(value: 'autopsy_scheduled', label: 'Autopsy Scheduled', color: '#FF9800', order: 2),
-    AutopsyStatusOption(value: 'autopsy_in_progress', label: 'Autopsy In Progress', color: '#FFC107', order: 3),
-    AutopsyStatusOption(value: 'autopsy_completed', label: 'Autopsy Completed', color: '#4CAF50', order: 4),
-    AutopsyStatusOption(value: 'technical_check_pending', label: 'Technical Check Pending', color: '#9C27B0', order: 5),
-    AutopsyStatusOption(value: 'technical_check_rejected', label: 'Technical Check Rejected', color: '#F44336', order: 6),
-    AutopsyStatusOption(value: 'technical_check_approved', label: 'Technical Check Approved', color: '#4CAF50', order: 7),
-    AutopsyStatusOption(value: 'work_orders_created', label: 'Work Orders Created', color: '#3F51B5', order: 8),
-    AutopsyStatusOption(value: 'job_completed', label: 'Job Completed', color: '#4CAF50', order: 9),
-    AutopsyStatusOption(value: 'job_cancelled', label: 'Job Cancelled', color: '#9E9E9E', order: 10),
+    AutopsyStatusOption(value: 'pending', label: 'Pending', color: '#FFA500', order: 1),
+    AutopsyStatusOption(value: 'in_progress', label: 'In Progress', color: '#2196F3', order: 2),
+    AutopsyStatusOption(value: 'completed', label: 'Completed', color: '#4CAF50', order: 3),
+    AutopsyStatusOption(value: 'cancelled', label: 'Cancelled', color: '#F44336', order: 4),
+    AutopsyStatusOption(value: 'on_hold', label: 'On Hold', color: '#9E9E9E', order: 5),
   ];
 
   static final List<AutopsyCategoryOption> categoryOptions = [
-    AutopsyCategoryOption(value: 'residential', label: 'Residential', order: 1),
-    AutopsyCategoryOption(value: 'commercial', label: 'Commercial', order: 2),
-    AutopsyCategoryOption(value: 'industrial', label: 'Industrial', order: 3),
-    AutopsyCategoryOption(value: 'emergency', label: 'Emergency', order: 4),
-    AutopsyCategoryOption(value: 'maintenance', label: 'Maintenance', order: 5),
+    AutopsyCategoryOption(value: 'new_installation', label: 'New Installation', order: 1),
+    AutopsyCategoryOption(value: 'maintenance', label: 'Maintenance', order: 2),
+    AutopsyCategoryOption(value: 'repair', label: 'Repair', order: 3),
+    AutopsyCategoryOption(value: 'upgrade', label: 'Upgrade', order: 4),
+    AutopsyCategoryOption(value: 'inspection', label: 'Inspection', order: 5),
   ];
 
   static String? getStatusLabel(String? status) {

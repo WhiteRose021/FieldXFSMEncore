@@ -16,7 +16,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -33,6 +33,25 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void initState() {
     super.initState();
     _initializeAnimations();
+    _loadSettings();
+    
+    // Add observer to detect when app comes back to foreground
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reload settings when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      _loadSettings();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This will be called when returning from other screens
+    // Check if we need to reload settings
     _loadSettings();
   }
 
@@ -56,10 +75,15 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       final environment = await BackendConfig.getEnvironment();
       final apiUrl = await BackendConfig.getApiBaseUrl();
       
-      setState(() {
-        _currentEnvironment = environment;
-        _apiUrl = apiUrl;
-      });
+      // Only update state if values have actually changed
+      if (mounted && (_currentEnvironment != environment || _apiUrl != apiUrl)) {
+        setState(() {
+          _currentEnvironment = environment;
+          _apiUrl = apiUrl;
+        });
+        
+        debugPrint('🔄 LoginScreen: Settings reloaded - Environment: $environment, API: $apiUrl');
+      }
     } catch (e) {
       debugPrint('Error loading settings: $e');
     }
@@ -70,6 +94,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     _usernameController.dispose();
     _passwordController.dispose();
     _logoAnimationController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -147,6 +172,33 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  // Navigate to settings and refresh when returning
+  Future<void> _navigateToSettings() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+    
+    // Refresh settings when returning from SettingsScreen
+    await _loadSettings();
+    
+    // Show success message if settings were changed
+    if (result == true && mounted) {
+      _showSuccessSnackBar('Settings updated successfully!');
+    }
+  }
+
+  // Navigate to debug screen and refresh when returning
+  Future<void> _navigateToDebug() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const DebugScreen()),
+    );
+    
+    // Refresh settings when returning from DebugScreen
+    await _loadSettings();
   }
 
   Widget _buildEnvironmentIndicator() {
@@ -232,12 +284,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       
       // Debug floating action button
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const DebugScreen()),
-          );
-        },
+        onPressed: _navigateToDebug,
         backgroundColor: Colors.orange,
         child: const Icon(Icons.bug_report),
       ),
@@ -252,16 +299,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             onSelected: (String result) {
               switch (result) {
                 case 'settings':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                  );
+                  _navigateToSettings();
                   break;
                 case 'debug':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DebugScreen()),
-                  );
+                  _navigateToDebug();
                   break;
               }
             },
@@ -481,12 +522,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           
                           // Quick actions
                           TextButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                              );
-                            },
+                            onPressed: _navigateToSettings,
                             icon: const Icon(Icons.settings, size: 16),
                             label: const Text('Environment Settings'),
                             style: TextButton.styleFrom(

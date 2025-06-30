@@ -1,7 +1,9 @@
-// lib/app/app.dart
+// lib/app/app.dart - FIXED VERSION
+// Compatible with AutopsyService and AutopsyRepository
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/autopsy_client.dart';
+import '../services/autopsy_service.dart';
 import '../services/permissions_manager.dart';
 import '../repositories/autopsy_repository.dart';
 import 'routes.dart';
@@ -13,18 +15,20 @@ class FieldFSMApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<AutopsyClient>(
-          create: (_) => AutopsyClient(baseUrl: 'https://your-api-url.com'),
+        // FIXED: Use AutopsyService instead of AutopsyClient
+        Provider<AutopsyService>(
+          create: (_) => AutopsyService(),
         ),
         ChangeNotifierProvider<PermissionsManager>(
           create: (_) => PermissionsManager(),
         ),
-        ChangeNotifierProxyProvider<AutopsyClient, AutopsyRepository>(
+        // FIXED: Updated to use AutopsyService
+        ChangeNotifierProxyProvider<AutopsyService, AutopsyRepository>(
           create: (context) => AutopsyRepository(
-            client: context.read<AutopsyClient>(),
+            client: context.read<AutopsyService>(),
           ),
-          update: (context, client, previous) =>
-              previous ?? AutopsyRepository(client: client),
+          update: (context, autopsyService, previous) =>
+              previous ?? AutopsyRepository(client: autopsyService),
         ),
       ],
       child: MaterialApp(

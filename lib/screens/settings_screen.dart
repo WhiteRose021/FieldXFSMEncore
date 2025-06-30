@@ -1,4 +1,4 @@
-// lib/screens/settings_screen.dart
+// lib/screens/settings_screen.dart - Updated _saveSettings method
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/backend_config.dart';
@@ -20,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _testResult = '';
   Map<String, dynamic> _currentSettings = {};
   Map<String, dynamic> _debugInfo = {};
+  bool _settingsChanged = false; // Track if settings were modified
 
   @override
   void initState() {
@@ -52,6 +53,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
+      // Store original values to check if they changed
+      final originalEnvironment = await BackendConfig.getEnvironment();
+      final originalTenant = await BackendConfig.getTenant();
+
       // Configure based on selected environment
       switch (_selectedEnvironment) {
         case 'production':
@@ -66,23 +71,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
           break;
       }
 
+      // Check if settings actually changed
+      _settingsChanged = originalEnvironment != _selectedEnvironment || 
+                        originalTenant != _tenant;
+
+      // 🔥 KEY FIX: Refresh all services with new configuration
+      if (_settingsChanged) {
+        await _refreshAllServices();
+      }
+
       // Reload settings to reflect changes
       await _loadCurrentSettings();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Settings saved successfully!'),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Settings saved successfully!')),
+              ],
+            ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
+
+        // Log the change for debugging
+        debugPrint('🔄 Settings saved: Environment=$_selectedEnvironment, Tenant=$_tenant');
+        debugPrint('🔄 Services refreshed with new configuration');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving settings: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Error saving settings: $e')),
+              ],
+            ),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -92,6 +124,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// 🔥 NEW METHOD: Refresh all services with new configuration
+  Future<void> _refreshAllServices() async {
+    try {
+      // Refresh AuthService configuration
+      final authService = context.read<AuthService>();
+      await authService.refreshConfiguration();
+
+      // Clear permissions cache since environment changed
+      final permissionsManager = context.read<PermissionsManager>();
+      permissionsManager.clearCache();
+
+      // Clear autopsy repository cache
+      final autopsyRepository = context.read<AutopsyRepository>();
+      autopsyRepository.clearCaches();
+
+      debugPrint('✅ All services refreshed with new configuration');
+    } catch (e) {
+      debugPrint('❌ Error refreshing services: $e');
     }
   }
 
@@ -159,9 +212,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cache cleared successfully!'),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Cache cleared successfully!')),
+              ],
+            ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -169,8 +229,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error clearing cache: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Error clearing cache: $e')),
+              ],
+            ),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -183,178 +250,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // Handle back button to return result
+  Future<bool> _onWillPop() async {
+    // Return true if settings were changed so LoginScreen can show success message
+    Navigator.of(context).pop(_settingsChanged);
+    return false; // We handle the pop manually
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('FieldX Settings'),
-        backgroundColor: _getEnvironmentColor(),
-        foregroundColor: Colors.white,
-        actions: [
-          Consumer<AuthService>(
-            builder: (context, authService, child) {
-              if (authService.isAuthenticated) {
-                return IconButton(
-                  icon: const Icon(Icons.logout),
-                  onPressed: () async {
-                    await authService.logout();
-                    if (mounted) {
-                      Navigator.of(context).pushReplacementNamed('/login');
-                    }
-                  },
-                );
-              }
-              return const SizedBox.shrink();
-            },
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('FieldX Settings'),
+          backgroundColor: _getEnvironmentColor(),
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(_settingsChanged),
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Current User Info
+          actions: [
             Consumer<AuthService>(
               builder: (context, authService, child) {
                 if (authService.isAuthenticated) {
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Current User',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Text('User: ${authService.currentUser ?? "Unknown"}'),
-                          Text('Type: ${authService.userType ?? "Unknown"}'),
-                          if (authService.tenantName?.isNotEmpty == true)
-                            Text('Tenant: ${authService.tenantName}'),
-                        ],
-                      ),
-                    ),
+                  return IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: () async {
+                      await authService.logout();
+                      if (mounted) {
+                        Navigator.of(context).pushReplacementNamed('/login');
+                      }
+                    },
                   );
                 }
                 return const SizedBox.shrink();
               },
             ),
-            const SizedBox(height: 16),
-
-            // Environment Settings
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Environment Configuration',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _selectedEnvironment,
-                      items: const [
-                        DropdownMenuItem(value: 'development', child: Text('Development (Local)')),
-                        DropdownMenuItem(value: 'staging', child: Text('Staging')),
-                        DropdownMenuItem(value: 'production', child: Text('Production')),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedEnvironment = value!;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'Environment',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: Icon(
-                          Icons.cloud,
-                          color: _getEnvironmentColor(),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Current User Info
+              Consumer<AuthService>(
+                builder: (context, authService, child) {
+                  if (authService.isAuthenticated) {
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Current User',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Text('User: ${authService.currentUser ?? "Unknown"}'),
+                            Text('Type: ${authService.userType ?? "Unknown"}'),
+                            if (authService.tenantName?.isNotEmpty == true)
+                              Text('Tenant: ${authService.tenantName}'),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      initialValue: _tenant,
-                      decoration: const InputDecoration(
-                        labelText: 'Tenant',
-                        hintText: 'applink, beyond, etc.',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.business),
-                      ),
-                      onChanged: (value) => _tenant = value,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Current Settings Display
-                    if (_currentSettings.isNotEmpty) ...[
-                      const Divider(),
-                      const Text(
-                        'Current Settings:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text('API URL: ${_currentSettings['apiBaseUrl'] ?? "Not set"}'),
-                      Text('Environment: ${_currentSettings['environment'] ?? "Not set"}'),
-                      Text('Tenant: ${_currentSettings['tenant'] ?? "Not set"}'),
-                    ],
-                  ],
-                ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _saveSettings,
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save),
-                    label: const Text('Save Settings'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _getEnvironmentColor(),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _testConnection,
-                    icon: const Icon(Icons.wifi_tethering),
-                    label: const Text('Test Connection'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            
-            // Cache Management
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _isLoading ? null : _clearCache,
-                icon: const Icon(Icons.clear_all),
-                label: const Text('Clear Cache'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.orange,
-                ),
-              ),
-            ),
-
-            // Test Results
-            if (_testResult.isNotEmpty) ...[
-              const SizedBox(height: 24),
+              // Environment Settings
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -362,65 +331,177 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Test Results',
+                        'Environment Configuration',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _selectedEnvironment,
+                        items: const [
+                          DropdownMenuItem(value: 'development', child: Text('Development (Local)')),
+                          DropdownMenuItem(value: 'staging', child: Text('Staging')),
+                          DropdownMenuItem(value: 'production', child: Text('Production')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedEnvironment = value!;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Environment',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: Icon(
+                            Icons.cloud,
+                            color: _getEnvironmentColor(),
+                          ),
                         ),
-                        child: Text(
-                          _testResult,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        initialValue: _tenant,
+                        decoration: const InputDecoration(
+                          labelText: 'Tenant',
+                          hintText: 'applink, beyond, etc.',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.business),
+                        ),
+                        onChanged: (value) => _tenant = value,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Current Settings Display
+                      if (_currentSettings.isNotEmpty) ...[
+                        const Divider(),
+                        const Text(
+                          'Current Settings:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('API URL: ${_currentSettings['apiBaseUrl'] ?? "Not set"}'),
+                        Text('Environment: ${_currentSettings['environment'] ?? "Not set"}'),
+                        Text('Tenant: ${_currentSettings['tenant'] ?? "Not set"}'),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _saveSettings,
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save),
+                      label: const Text('Save Settings'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _getEnvironmentColor(),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _testConnection,
+                      icon: const Icon(Icons.wifi_tethering),
+                      label: const Text('Test Connection'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              
+              // Cache Management
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _clearCache,
+                  icon: const Icon(Icons.clear_all),
+                  label: const Text('Clear Cache'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                  ),
+                ),
+              ),
+
+              // Test Results
+              if (_testResult.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Test Results',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _testResult,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              // Debug Information (Expandable)
+              if (_debugInfo.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Card(
+                  child: ExpansionTile(
+                    title: const Text(
+                      'Debug Information',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    leading: const Icon(Icons.bug_report),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _debugInfo.toString(),
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10,
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ],
-
-            // Debug Information (Expandable)
-            if (_debugInfo.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Card(
-                child: ExpansionTile(
-                  title: const Text(
-                    'Debug Information',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  leading: const Icon(Icons.bug_report),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _debugInfo.toString(),
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

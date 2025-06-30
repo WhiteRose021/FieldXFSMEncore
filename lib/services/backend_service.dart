@@ -1,9 +1,8 @@
-// lib/services/backend_service.dart - CORE FOUNDATION
-// Following FSM Architecture PLAN - Single source for Encore.ts communication
-
+// lib/services/backend_service.dart
 import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../config/backend_config.dart';
 
 /// Core service for managing Encore.ts backend communication
 /// Handles environment switching, auth, and HTTP setup
@@ -11,8 +10,6 @@ class BackendService {
   static BackendService? _instance;
   Dio? _dio;
   
-  // Environment configuration
-  String _environment = 'development';
   String? _authToken;
   
   // Private constructor for singleton
@@ -26,102 +23,97 @@ class BackendService {
 
   /// Initialize the backend service
   Future<void> initialize({
-    String environment = 'development',
     String? authToken,
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    _environment = environment;
     _authToken = authToken;
     
+    // Get API URL from BackendConfig instead of hardcoding
+    final apiBaseUrl = await BackendConfig.getApiBaseUrl();
+    
     _dio = Dio(BaseOptions(
-      baseUrl: getApiBaseUrl(),
+      baseUrl: apiBaseUrl,
       connectTimeout: timeout,
       receiveTimeout: timeout,
       sendTimeout: timeout,
-      headers: _getDefaultHeaders(),
+      headers: await _getDefaultHeaders(),
     ));
 
     _setupInterceptors();
     
     developer.log(
-      'BackendService initialized - Environment: $_environment, URL: ${getApiBaseUrl()}',
+      'BackendService initialized - URL: $apiBaseUrl',
       name: 'BackendService',
     );
   }
 
-  /// Get current Encore.ts API base URL based on environment
-  String getApiBaseUrl() {
-    switch (_environment) {
-      case 'production':
-        return 'https://applink.fieldx.gr';
-      case 'staging':
-        return 'https://staging.fieldx.gr'; // If you have staging
-      case 'development':
-      default:
-        return 'http://localhost:4000'; // Encore.ts local development
+  /// Refresh configuration (call this after environment changes)
+  Future<void> refreshConfiguration() async {
+    try {
+      // Get updated API URL from BackendConfig
+      final apiBaseUrl = await BackendConfig.getApiBaseUrl();
+      final environment = await BackendConfig.getEnvironment();
+      
+      // Recreate Dio instance with new base URL
+      _dio = Dio(BaseOptions(
+        baseUrl: apiBaseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+        headers: await _getDefaultHeaders(),
+      ));
+
+      _setupInterceptors();
+      
+      developer.log(
+        'BackendService configuration refreshed - Environment: $environment, URL: $apiBaseUrl',
+        name: 'BackendService',
+      );
+    } catch (e) {
+      developer.log('Error refreshing BackendService configuration: $e', name: 'BackendService');
     }
   }
 
-  /// Get configured HTTP client with auth and interceptors
-  Dio getHttpClient() {
-    if (!_isInitialized()) {
-      throw StateError('BackendService not initialized. Call initialize() first.');
-    }
-    return _dio!;
+  /// Get current API base URL from BackendConfig
+  Future<String> getApiBaseUrl() async {
+    return await BackendConfig.getApiBaseUrl();
   }
 
-  /// Set authentication token for all requests
+  /// Get current environment
+  String get currentEnvironment => 'development'; // This will be updated by refreshConfiguration
+
+  /// Set authentication token
   void setAuthToken(String token) {
     _authToken = token;
-    _dio?.options.headers['Authorization'] = 'Bearer $token';
     
-    developer.log('Auth token updated', name: 'BackendService');
+    // Update headers in existing Dio instance
+    if (_dio != null) {
+      _dio!.options.headers['Authorization'] = 'Bearer $token';
+    }
+    
+    developer.log('Auth token set in BackendService', name: 'BackendService');
   }
 
   /// Clear authentication token
   void clearAuthToken() {
     _authToken = null;
-    _dio?.options.headers.remove('Authorization');
     
-    developer.log('Auth token cleared', name: 'BackendService');
-  }
-
-  /// Switch environment and update base URL
-  Future<void> setEnvironment(String environment) async {
-    if (_environment == environment) return;
-    
-    _environment = environment;
-    final newBaseUrl = getApiBaseUrl();
-    
+    // Remove auth header from Dio instance
     if (_dio != null) {
-      _dio!.options.baseUrl = newBaseUrl;
+      _dio!.options.headers.remove('Authorization');
     }
     
-    developer.log(
-      'Environment switched to $_environment - URL: $newBaseUrl',
-      name: 'BackendService',
-    );
+    developer.log('Auth token cleared from BackendService', name: 'BackendService');
   }
 
-  /// Get current environment
-  String get currentEnvironment => _environment;
-
-  /// Check if service is initialized
-  bool _isInitialized() => _dio != null;
-
-  /// Get default headers for all requests
-  Map<String, dynamic> _getDefaultHeaders() {
-    final headers = <String, dynamic>{
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': 'FieldFSM-Mobile/1.0',
-    };
-
-    // Add auth token if available
-    if (_authToken != null) {
+  /// Get default headers including auth if available
+  Future<Map<String, String>> _getDefaultHeaders() async {
+    final headers = await BackendConfig.getDefaultHeaders();
+    
+    if (_authToken != null && _authToken!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_authToken';
     }
-
+    
     return headers;
   }
 
@@ -129,50 +121,50 @@ class BackendService {
   void _setupInterceptors() {
     if (_dio == null) return;
     
-    // Request/Response logging in debug mode
-    if (kDebugMode) {
-      _dio!.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: false, // Don't log headers (may contain sensitive data)
-        responseHeader: false,
-        logPrint: (object) => developer.log(
-          object.toString(),
-          name: 'HTTP [${_environment.toUpperCase()}]',
-        ),
-      ));
-    }
-
-    // Auth token refresh interceptor
-    _dio!.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        // Ensure auth token is always up to date
-        if (_authToken != null && !options.headers.containsKey('Authorization')) {
-          options.headers['Authorization'] = 'Bearer $_authToken';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        // Log errors for debugging
-        developer.log(
-          'HTTP Error: ${error.response?.statusCode} - ${error.message}',
-          name: 'BackendService',
-          error: error,
-        );
-        handler.next(error);
-      },
-    ));
-  }
-
-  /// Dispose resources
-  void dispose() {
-    _dio?.close();
-    _instance = null;
+    _dio!.interceptors.clear();
     
-    developer.log('BackendService disposed', name: 'BackendService');
+    // Add logging interceptor
+    _dio!.interceptors.add(
+      LogInterceptor(
+        requestBody: kDebugMode,
+        responseBody: kDebugMode,
+        logPrint: (obj) => developer.log(obj.toString(), name: 'HTTP'),
+      ),
+    );
+
+    // Add auth token interceptor
+    _dio!.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          // Ensure auth token is always included if available
+          if (_authToken != null && _authToken!.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $_authToken';
+          }
+          handler.next(options);
+        },
+        onError: (error, handler) {
+          developer.log(
+            'HTTP Error: ${error.response?.statusCode} - ${error.message}',
+            name: 'BackendService',
+          );
+          handler.next(error);
+        },
+      ),
+    );
   }
 
-  /// Make a GET request to Encore.ts API
+  /// Check if service is initialized
+  bool _isInitialized() => _dio != null;
+
+  /// Get configured HTTP client
+  Dio getHttpClient() {
+    if (!_isInitialized()) {
+      throw StateError('BackendService not initialized. Call initialize() first.');
+    }
+    return _dio!;
+  }
+
+  /// Make a GET request
   Future<Response<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -181,6 +173,9 @@ class BackendService {
     if (!_isInitialized()) {
       throw StateError('BackendService not initialized');
     }
+    
+    developer.log('GET $path', name: 'BackendService');
+    
     return await _dio!.get<T>(
       path,
       queryParameters: queryParameters,
@@ -188,7 +183,7 @@ class BackendService {
     );
   }
 
-  /// Make a POST request to Encore.ts API
+  /// Make a POST request
   Future<Response<T>> post<T>(
     String path, {
     dynamic data,
@@ -198,6 +193,9 @@ class BackendService {
     if (!_isInitialized()) {
       throw StateError('BackendService not initialized');
     }
+    
+    developer.log('POST $path', name: 'BackendService');
+    
     return await _dio!.post<T>(
       path,
       data: data,
@@ -206,7 +204,7 @@ class BackendService {
     );
   }
 
-  /// Make a PUT request to Encore.ts API
+  /// Make a PUT request
   Future<Response<T>> put<T>(
     String path, {
     dynamic data,
@@ -216,6 +214,9 @@ class BackendService {
     if (!_isInitialized()) {
       throw StateError('BackendService not initialized');
     }
+    
+    developer.log('PUT $path', name: 'BackendService');
+    
     return await _dio!.put<T>(
       path,
       data: data,
@@ -224,7 +225,7 @@ class BackendService {
     );
   }
 
-  /// Make a DELETE request to Encore.ts API
+  /// Make a DELETE request
   Future<Response<T>> delete<T>(
     String path, {
     dynamic data,
@@ -234,51 +235,14 @@ class BackendService {
     if (!_isInitialized()) {
       throw StateError('BackendService not initialized');
     }
+    
+    developer.log('DELETE $path', name: 'BackendService');
+    
     return await _dio!.delete<T>(
       path,
       data: data,
       queryParameters: queryParameters,
       options: options,
     );
-  }
-}
-
-/// Environment constants for easy switching
-class BackendEnvironment {
-  static const String development = 'development';
-  static const String staging = 'staging';
-  static const String production = 'production';
-}
-
-/// Configuration helper for different environments
-class BackendConfig {
-  /// Get configuration for development environment
-  static Map<String, dynamic> development() {
-    return {
-      'environment': BackendEnvironment.development,
-      'apiBaseUrl': 'http://localhost:4000',
-      'debugMode': true,
-      'timeout': 30,
-    };
-  }
-
-  /// Get configuration for production environment
-  static Map<String, dynamic> production() {
-    return {
-      'environment': BackendEnvironment.production,
-      'apiBaseUrl': 'https://applink.fieldx.gr',
-      'debugMode': false,
-      'timeout': 15,
-    };
-  }
-
-  /// Get configuration for staging environment
-  static Map<String, dynamic> staging() {
-    return {
-      'environment': BackendEnvironment.staging,
-      'apiBaseUrl': 'https://staging.fieldx.gr',
-      'debugMode': true,
-      'timeout': 20,
-    };
   }
 }

@@ -174,7 +174,7 @@ class AutopsyCard extends StatelessWidget {
                 _buildInfoRow('Category', autopsy.autopsyCategory!, Icons.category),
               // FIXED: Handle String createdAt instead of DateTime
               if (autopsy.createdAt != null)
-                _buildInfoRow('Created', _formatDateString(autopsy.createdAt!), Icons.calendar_today),
+                _buildInfoRow('Created', _formatDateString(autopsy.createdAt! as String), Icons.calendar_today),
               if (showActions) ...[
                 const SizedBox(height: 12),
                 Row(

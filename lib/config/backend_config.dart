@@ -6,7 +6,7 @@ class BackendConfig {
   // Encore Backend URLs for different environments
   static const String productionUrl = 'https://applink.fieldx.gr/api';
   static const String stagingUrl = 'https://staging.fieldx.gr/api'; // Optional staging
-  static const String developmentUrl = 'http://localhost:4000'; // Local development
+  static const String developmentUrl = 'http://localhost:4001'; // Updated to 4001 for AppLink
   
   // Default settings
   static const String defaultTenant = 'applink'; // Default tenant
@@ -27,6 +27,9 @@ class BackendConfig {
   static Future<void> setEnvironment(String environment) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('environment', environment);
+    
+    // Log the change for debugging
+    print('🔄 BackendConfig: Environment updated to $environment');
   }
 
   /// Get the API base URL based on current environment
@@ -54,6 +57,9 @@ class BackendConfig {
   static Future<void> setTenant(String tenant) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('selectedTenant', tenant);
+    
+    // Log the change for debugging
+    print('🔄 BackendConfig: Tenant updated to $tenant');
   }
 
   /// Check if we're in development mode
@@ -68,6 +74,7 @@ class BackendConfig {
     if (tenant != null) {
       await setTenant(tenant);
     }
+    print('✅ BackendConfig: Configured for development environment');
   }
 
   /// Configure for staging environment
@@ -76,6 +83,7 @@ class BackendConfig {
     if (tenant != null) {
       await setTenant(tenant);
     }
+    print('✅ BackendConfig: Configured for staging environment');
   }
 
   /// Configure for production environment
@@ -84,120 +92,61 @@ class BackendConfig {
     if (tenant != null) {
       await setTenant(tenant);
     }
+    print('✅ BackendConfig: Configured for production environment');
   }
 
-  /// Get all current settings
+  // ========== MISSING METHODS FOR SETTINGS SCREEN ==========
+
+  /// Get current settings as Map (needed by SettingsScreen)
   static Future<Map<String, dynamic>> getSettings() async {
-    final prefs = await SharedPreferences.getInstance();
     final environment = await getEnvironment();
     final tenant = await getTenant();
-    final apiUrl = await getApiBaseUrl();
+    final apiBaseUrl = await getApiBaseUrl();
     
     return {
       'environment': environment,
       'tenant': tenant,
-      'apiBaseUrl': apiUrl,
-      'isDevelopment': environment == envDevelopment,
-      'isProduction': environment == envProduction,
-      'isStaging': environment == envStaging,
+      'apiBaseUrl': apiBaseUrl,
     };
   }
 
-  /// Initialize default configuration on first app launch
-  static Future<void> initializeDefaults() async {
-    final prefs = await SharedPreferences.getInstance();
+  /// Get debug information (needed by SettingsScreen)
+  static Future<Map<String, dynamic>> getDebugInfo() async {
+    final environment = await getEnvironment();
+    final tenant = await getTenant();
+    final apiBaseUrl = await getApiBaseUrl();
     
-    // Set environment if not set
-    if (!prefs.containsKey('environment')) {
-      await prefs.setString('environment', defaultEnvironment);
-    }
-    
-    // Set tenant if not set
-    if (!prefs.containsKey('selectedTenant')) {
-      await prefs.setString('selectedTenant', defaultTenant);
-    }
-    
-    // Clean up old EspoCRM/backend switching keys
-    await _cleanupOldKeys(prefs);
+    return {
+      'environment': environment,
+      'tenant': tenant,
+      'apiBaseUrl': apiBaseUrl,
+      'isValid': await validateConfiguration(),
+      'timestamp': DateTime.now().toIso8601String(),
+    };
   }
 
-  /// Clean up old SharedPreferences keys from the previous messy architecture
-  static Future<void> _cleanupOldKeys(SharedPreferences prefs) async {
-    final keysToRemove = [
-      'selectedBackend',      // Old backend switching
-      'crmDomain',           // EspoCRM URL
-      'encoreApiUrl',        // Old Encore URL key
-      'isDevelopment',       // Old boolean, now using environment string
-    ];
+  /// Validate current configuration (needed by SettingsScreen)
+  static Future<bool> validateConfiguration() async {
+    final environment = await getEnvironment();
+    final apiBaseUrl = await getApiBaseUrl();
     
-    for (final key in keysToRemove) {
-      if (prefs.containsKey(key)) {
-        await prefs.remove(key);
-      }
-    }
+    return environment.isNotEmpty && apiBaseUrl.isNotEmpty;
   }
 
-  /// Get auth headers with tenant information (for API calls)
+  /// Get default headers for HTTP requests (needed by SettingsScreen)
   static Future<Map<String, String>> getDefaultHeaders() async {
     final tenant = await getTenant();
     
-    return {
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      if (tenant.isNotEmpty) 'X-Tenant': tenant,
     };
-  }
 
-  /// Get API URL for a specific endpoint
-  static Future<String> getEndpointUrl(String endpoint) async {
-    final baseUrl = await getApiBaseUrl();
-    // Remove leading slash from endpoint if present
-    final cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-    return '$baseUrl/$cleanEndpoint';
-  }
-
-  /// Get debug information for troubleshooting
-  static Future<Map<String, dynamic>> getDebugInfo() async {
-    final settings = await getSettings();
-    final headers = await getDefaultHeaders();
-    
-    return {
-      'settings': settings,
-      'defaultHeaders': headers,
-      'availableEnvironments': [envDevelopment, envStaging, envProduction],
-      'urlMapping': {
-        envDevelopment: developmentUrl,
-        envStaging: stagingUrl,
-        envProduction: productionUrl,
-      },
-    };
-  }
-
-  /// Validate current configuration
-  static Future<bool> validateConfiguration() async {
-    try {
-      final environment = await getEnvironment();
-      final tenant = await getTenant();
-      final apiUrl = await getApiBaseUrl();
-      
-      // Check if environment is valid
-      if (![envDevelopment, envStaging, envProduction].contains(environment)) {
-        return false;
-      }
-      
-      // Check if tenant is not empty
-      if (tenant.isEmpty) {
-        return false;
-      }
-      
-      // Check if API URL is valid
-      if (apiUrl.isEmpty || !Uri.tryParse(apiUrl)!.isAbsolute) {
-        return false;
-      }
-      
-      return true;
-    } catch (e) {
-      return false;
+    // Backend expects X-Tenant-ID (not X-Tenant)
+    if (tenant.isNotEmpty) {
+      headers['X-Tenant-ID'] = tenant;
     }
+
+    return headers;
   }
 }
