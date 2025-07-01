@@ -1,10 +1,11 @@
-// lib/screens/login_screen.dart
+// lib/screens/login_screen.dart - Enhanced with permissions
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/permissions_manager.dart'; // 🔥 NEW: Added permissions
 import '../config/backend_config.dart';
 import 'debug_screen.dart';
 import 'settings_screen.dart';
@@ -22,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   final _passwordController = TextEditingController();
   
   bool _isLoading = false;
+  bool _isInitializingPermissions = false; // 🔥 NEW: Added permission loading state
   bool _obscurePassword = true;
   String _currentEnvironment = 'development';
   String _apiUrl = '';
@@ -98,6 +100,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     super.dispose();
   }
 
+  // 🔥 ENHANCED: Added permission initialization to login process
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -110,19 +113,56 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final permissionsManager = Provider.of<PermissionsManager>(context, listen: false); // 🔥 NEW
+      
+      debugPrint('🔐 Starting enhanced login process...');
+      debugPrint('👤 Username: $username');
+      
+      // Step 1: Authenticate user
       final success = await authService.authenticate(username, password);
       
       if (success && mounted) {
-        // Store login success
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
+        debugPrint('✅ User authenticated successfully');
         
-        // Navigate to the main app
-        Navigator.of(context).pushReplacementNamed('/dashboard');
+        // Step 2: Initialize permissions
+        setState(() {
+          _isLoading = false;
+          _isInitializingPermissions = true; // 🔥 NEW: Show permission loading
+        });
+        
+        debugPrint('🔐 Initializing permissions for authenticated user...');
+        
+        try {
+          await permissionsManager.initializeUserPermissions(authService);
+          debugPrint('✅ Permissions initialized successfully');
+          debugPrint('🏢 Tenant: ${authService.tenantName}');
+          debugPrint('🔑 Permissions loaded: ${permissionsManager.hasPermissions}');
+          debugPrint('🔑 Can create: ${permissionsManager.canCreate}');
+          debugPrint('🔑 Can edit: ${permissionsManager.canEdit}');
+          debugPrint('🔑 Can delete: ${permissionsManager.canDelete}');
+          
+          // Step 3: Store login success and navigate
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+          
+          // Navigate to the main app
+          Navigator.of(context).pushReplacementNamed('/dashboard');
+          
+        } catch (permissionError) {
+          debugPrint('❌ Permission initialization failed: $permissionError');
+          _showErrorSnackBar('Failed to load permissions: $permissionError');
+          
+          // Still allow login but with limited functionality
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+          Navigator.of(context).pushReplacementNamed('/dashboard');
+        }
+        
       } else if (mounted) {
         _showErrorSnackBar('Login failed. Please check your credentials.');
       }
     } catch (error) {
+      debugPrint('❌ Login error: $error');
       if (mounted) {
         _showErrorSnackBar('Login error: $error');
       }
@@ -130,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isInitializingPermissions = false; // 🔥 NEW: Reset permission loading
         });
       }
     }
@@ -275,6 +316,53 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       default:
         return Icons.developer_mode;
     }
+  }
+
+  // 🔥 NEW: Enhanced login button content with permission loading
+  Widget _buildLoginButtonContent() {
+    if (_isLoading) {
+      return const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+          SizedBox(width: 12),
+          Text(
+            'Authenticating...',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        ],
+      );
+    }
+    
+    if (_isInitializingPermissions) {
+      return const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+          SizedBox(width: 12),
+          Text(
+            'Loading Permissions...',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        ],
+      );
+    }
+    
+    return const Text(
+      'Sign In',
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
+    );
   }
 
   @override
@@ -431,7 +519,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                               ),
                             ),
-                            enabled: !_isLoading,
+                            enabled: !_isLoading && !_isInitializingPermissions, // 🔥 NEW
                             validator: (value) {
                               if (value?.isEmpty ?? true) {
                                 return 'Please enter your username';
@@ -472,7 +560,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                               ),
                             ),
-                            enabled: !_isLoading,
+                            enabled: !_isLoading && !_isInitializingPermissions, // 🔥 NEW
                             onFieldSubmitted: (_) => _handleLogin(),
                             validator: (value) {
                               if (value?.isEmpty ?? true) {
@@ -486,12 +574,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(height: 24),
                           
-                          // Login button
+                          // 🔥 ENHANCED: Login button with permission loading
                           SizedBox(
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleLogin,
+                              onPressed: (_isLoading || _isInitializingPermissions) ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1565C0),
                                 foregroundColor: Colors.white,
@@ -500,25 +588,23 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                                 elevation: 0,
                               ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Sign In',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                              child: _buildLoginButtonContent(), // 🔥 NEW: Enhanced button content
                             ),
                           ),
                           const SizedBox(height: 16),
+                          
+                          // 🔥 NEW: Status message for permission loading
+                          if (_isInitializingPermissions)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Setting up your permissions...',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
                           
                           // Quick actions
                           TextButton.icon(

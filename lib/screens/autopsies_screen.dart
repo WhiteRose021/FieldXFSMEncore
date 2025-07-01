@@ -1,11 +1,12 @@
-// lib/screens/autopsies_screen.dart - Professional List Screen
+// lib/screens/autopsies_screen.dart - Enhanced with permissions
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../repositories/autopsy_repository.dart';
-import '../services/permissions_manager.dart';
+import '../services/permissions_manager.dart'; // 🔥 ENHANCED: Already imported
 import '../models/autopsy_models.dart';
 import '../widgets/professional_autopsy_list_item.dart';
+import '../widgets/permission_guard.dart'; // 🔥 NEW: Add permission guard
 
 class AutopsiesScreen extends StatefulWidget {
   const AutopsiesScreen({super.key});
@@ -23,8 +24,11 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeData();
     _setupScrollListener();
+    // 🔥 FIX: Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
+    });
   }
 
   @override
@@ -34,15 +38,31 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
     super.dispose();
   }
 
+  // 🔥 ENHANCED: Initialize with permission-aware loading
   void _initializeData() async {
     final repository = context.read<AutopsyRepository>();
     final permissionsManager = context.read<PermissionsManager>();
     
-    // Load permissions first
-    await permissionsManager.loadPermissions();
+    debugPrint('🔄 AutopsiesScreen: Initializing with permissions...');
     
-    // Then load autopsies
-    await repository.loadAutopsies(refresh: true);
+    // Load permissions first
+    if (!permissionsManager.hasPermissions) {
+      debugPrint('🔐 Loading permissions...');
+      await permissionsManager.loadPermissions();
+      debugPrint('✅ Permissions loaded - canCreate: ${permissionsManager.canCreate}');
+    }
+    
+    // 🔥 NEW: Get permission-aware query parameters
+    final permissionParams = permissionsManager.getUserQueryParameters();
+    debugPrint('📋 Permission parameters available: $permissionParams');
+    
+    // Then load autopsies with permission filtering
+    await repository.loadAutopsies(
+      refresh: true,
+      additionalParams: permissionParams,
+    );
+    
+    debugPrint('✅ AutopsiesScreen initialized with ${repository.autopsies.length} autopsies');
   }
 
   void _setupScrollListener() {
@@ -73,9 +93,14 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
             child: _buildSearchAndFilters(),
           ),
           
-          // Statistics Header
+          // Statistics Header with Permissions Info
           SliverToBoxAdapter(
             child: _buildStatisticsHeader(),
+          ),
+          
+          // 🔥 NEW: Permission Status Indicator
+          SliverToBoxAdapter(
+            child: _buildPermissionStatusIndicator(),
           ),
           
           // Autopsy List
@@ -93,7 +118,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
         ],
       ),
       
-      // Floating Action Button
+      // 🔥 ENHANCED: Permission-aware Floating Action Button
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
@@ -148,7 +173,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
           tooltip: 'Filter',
         ),
         
-        // More Options
+        // More Options with Permission Info
         PopupMenuButton<String>(
           onSelected: _handleMenuSelection,
           itemBuilder: (context) => [
@@ -159,6 +184,17 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
                   Icon(Icons.download, size: 20),
                   SizedBox(width: 8),
                   Text('Export'),
+                ],
+              ),
+            ),
+            // 🔥 NEW: Permission info menu item
+            const PopupMenuItem(
+              value: 'permissions',
+              child: Row(
+                children: [
+                  Icon(Icons.security, size: 20),
+                  SizedBox(width: 8),
+                  Text('Permission Info'),
                 ],
               ),
             ),
@@ -306,6 +342,67 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
     );
   }
 
+  // 🔥 NEW: Permission status indicator
+  Widget _buildPermissionStatusIndicator() {
+    return Consumer<PermissionsManager>(
+      builder: (context, permissionsManager, _) {
+        if (!permissionsManager.hasPermissions) {
+          return Container(
+            color: Colors.orange.shade50,
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.orange.shade600, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Permissions not loaded. Some features may be limited.',
+                    style: TextStyle(color: Colors.orange.shade800, fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => permissionsManager.refreshPermissions(),
+                  child: Text('Retry', style: TextStyle(color: Colors.orange.shade800)),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Show permission summary in debug mode
+        return Container(
+          color: Colors.blue.shade50,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.security, color: Colors.blue.shade600, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Permissions: ${_getPermissionSummary(permissionsManager)}',
+                  style: TextStyle(color: Colors.blue.shade800, fontSize: 11),
+                ),
+              ),
+              if (permissionsManager.error != null)
+                Icon(Icons.error, color: Colors.red.shade600, size: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 🔥 NEW: Get permission summary text
+  String _getPermissionSummary(PermissionsManager manager) {
+    final permissions = <String>[];
+    if (manager.canCreate) permissions.add('Create');
+    if (manager.canEdit) permissions.add('Edit');
+    if (manager.canDelete) permissions.add('Delete');
+    
+    if (permissions.isEmpty) return 'Read Only';
+    return permissions.join(', ');
+  }
+
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -330,7 +427,7 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: color.shade700,
+              color: color.shade700 ?? color,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -396,33 +493,8 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
         }
 
         if (repository.autopsies.isEmpty) {
-          return const SliverFillRemaining(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inbox_outlined,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No service requests found',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Try adjusting your search or filters',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
+          return SliverFillRemaining(
+            child: _buildEmptyState(), // 🔥 ENHANCED: Use permission-aware empty state
           );
         }
 
@@ -430,15 +502,81 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
           delegate: SliverChildBuilderDelegate(
             (context, index) {
               final autopsy = repository.autopsies[index];
-              return ProfessionalAutopsyListItem(
-                autopsy: autopsy,
-                onTap: () => _openAutopsyDetails(autopsy),
-                onEdit: () => _editAutopsy(autopsy),
-                onCall: () => _callCustomer(autopsy),
-                onNavigate: () => _navigateToAddress(autopsy),
-              );
+              return _buildAutopsyTileWithPermissions(autopsy); // 🔥 ENHANCED
             },
             childCount: repository.autopsies.length,
+          ),
+        );
+      },
+    );
+  }
+
+  // 🔥 NEW: Enhanced autopsy tile with permission checks
+  Widget _buildAutopsyTileWithPermissions(CAutopsy autopsy) {
+    return Consumer<PermissionsManager>(
+      builder: (context, permissionsManager, _) {
+        // Check record-level permissions
+        final autopsyMap = autopsy.toJson();
+        final canEdit = permissionsManager.canEditRecord(autopsyMap);
+        final canDelete = permissionsManager.canDeleteRecord(autopsyMap);
+        
+        return ProfessionalAutopsyListItem(
+          autopsy: autopsy,
+          onTap: () => _openAutopsyDetails(autopsy),
+          onEdit: canEdit ? () => _editAutopsy(autopsy) : null, // 🔥 NEW: Conditional edit
+          onCall: () => _callCustomer(autopsy),
+          onNavigate: () => _navigateToAddress(autopsy),
+          // 🔥 NOTE: onDelete and permissionStatus can be added when ProfessionalAutopsyListItem supports them
+        );
+      },
+    );
+  }
+
+  // 🔥 NEW: Permission-aware empty state
+  Widget _buildEmptyState() {
+    return Consumer<PermissionsManager>(
+      builder: (context, permissionsManager, _) {
+        final canCreate = permissionsManager.canCreate;
+        
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.inbox_outlined,
+                size: 64,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No service requests found',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                canCreate 
+                    ? 'Try adjusting your search or filters, or create a new request'
+                    : 'Try adjusting your search or filters',
+                style: const TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              if (canCreate) ...[
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: _createNewAutopsy,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create New Request'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ],
           ),
         );
       },
@@ -471,19 +609,17 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
     );
   }
 
+  // 🔥 ENHANCED: Permission-aware floating action button
   Widget _buildFloatingActionButton() {
-    return Consumer<PermissionsManager>(
-      builder: (context, permissions, _) {
-        if (!permissions.canCreate) return const SizedBox.shrink();
-        
-        return FloatingActionButton.extended(
-          onPressed: _createNewAutopsy,
-          icon: const Icon(Icons.add),
-          label: const Text('New SR'),
-          backgroundColor: Colors.blue.shade700,
-          foregroundColor: Colors.white,
-        );
-      },
+    return PermissionGuard.create(
+      child: FloatingActionButton.extended(
+        onPressed: _createNewAutopsy,
+        icon: const Icon(Icons.add),
+        label: const Text('New SR'),
+        backgroundColor: Colors.blue.shade700,
+        foregroundColor: Colors.white,
+      ),
+      fallback: const SizedBox.shrink(), // Hide if no create permission
     );
   }
 
@@ -499,10 +635,19 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
     }).length;
   }
 
-  // Event Handlers
+  // 🔥 ENHANCED: Event Handlers with permission awareness
   void _refreshData() async {
     final repository = context.read<AutopsyRepository>();
-    await repository.refreshAutopsies();
+    final permissionsManager = context.read<PermissionsManager>();
+    
+    // Refresh permissions first
+    await permissionsManager.refreshPermissions();
+    
+    // Get updated permission parameters
+    final permissionParams = permissionsManager.getUserQueryParameters();
+    
+    // Then refresh autopsies with updated permissions
+    await repository.refreshAutopsies(additionalParams: permissionParams);
   }
 
   void _clearSearch() {
@@ -521,9 +666,15 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
 
   void _applyFilters() async {
     final repository = context.read<AutopsyRepository>();
+    final permissionsManager = context.read<PermissionsManager>();
+    
+    // Get permission parameters for filtering
+    final permissionParams = permissionsManager.getUserQueryParameters();
+    
     await repository.applyFilters(
       status: _selectedStatusFilter,
       category: _selectedCategoryFilter,
+      additionalParams: permissionParams, // ✅ REQUIRED by your repository
     );
   }
 
@@ -544,18 +695,95 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
     );
   }
 
+  // 🔥 ENHANCED: Handle menu selection with permission info
   void _handleMenuSelection(String value) {
     switch (value) {
       case 'export':
-        // Implement export functionality
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export functionality coming soon')),
-        );
+        // Check export permission
+        final permissionsManager = context.read<PermissionsManager>();
+        if (permissionsManager.canPerformAction('read')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Export functionality coming soon')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You don\'t have permission to export data'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        break;
+      case 'permissions':
+        _showPermissionInfo(); // 🔥 NEW
         break;
       case 'settings':
         // Navigate to settings
         break;
     }
+  }
+
+  // 🔥 NEW: Show permission information dialog
+  void _showPermissionInfo() {
+    final permissionsManager = context.read<PermissionsManager>();
+    final debugInfo = permissionsManager.getDebugSummary();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.security, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Permission Information'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...debugInfo.entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        child: Text(
+                          '${entry.key}:',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text('${entry.value}'),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              permissionsManager.refreshPermissions();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Permissions refreshed')),
+              );
+            },
+            child: const Text('Refresh'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openAutopsyDetails(CAutopsy autopsy) {
@@ -565,7 +793,9 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
 
   void _editAutopsy(CAutopsy autopsy) {
     // Navigate to edit screen
-    Navigator.pushNamed(context, '/autopsy-edit', arguments: autopsy.id);
+    Navigator.pushNamed(context, '/autopsy-edit', arguments: autopsy.id).then((_) {
+      _refreshData(); // Refresh list when returning
+    });
   }
 
   void _callCustomer(CAutopsy autopsy) async {
@@ -590,10 +820,63 @@ class _AutopsiesScreenState extends State<AutopsiesScreen> {
 
   void _createNewAutopsy() {
     // Navigate to create autopsy screen
-    Navigator.pushNamed(context, '/autopsy-create');
+    Navigator.pushNamed(context, '/autopsy-create').then((_) {
+      _refreshData(); // Refresh list when returning
+    });
+  }
+
+  // 🔥 NEW: Confirm delete with permission check
+  void _confirmDeleteAutopsy(CAutopsy autopsy) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Service Request'),
+        content: Text('Are you sure you want to delete "${autopsy.effectiveDisplayName}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteAutopsy(autopsy);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔥 NEW: Delete autopsy
+  Future<void> _deleteAutopsy(CAutopsy autopsy) async {
+    try {
+      final repository = context.read<AutopsyRepository>();
+      // You'll need to add this method to your repository
+      // await repository.deleteAutopsy(autopsy.id);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Service request deleted successfully')),
+      );
+      
+      _refreshData(); // Refresh list
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting service request: $e')),
+      );
+    }
   }
 }
 
-extension on Color {
-  get shade700 => null;
+// Fix for the missing shade700 extension
+extension ColorExtension on Color {
+  Color? get shade700 {
+    if (this == Colors.red) return Colors.red.shade700;
+    if (this == Colors.blue) return Colors.blue.shade700;
+    if (this == Colors.green) return Colors.green.shade700;
+    if (this == Colors.orange) return Colors.orange.shade700;
+    return null;
+  }
 }

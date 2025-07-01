@@ -1,6 +1,7 @@
-// lib/repositories/autopsy_repository.dart - FIXED VERSION
+// lib/repositories/autopsy_repository.dart - ENHANCED VERSION with Permission Support
 // Updated import and types to use AutopsyService
 
+import 'package:fieldx_fsm/services/autopsy_service.dart';
 import 'package:flutter/material.dart';
 import '../models/autopsy_models.dart';
 import '../services/autopsy_service.dart';
@@ -45,8 +46,11 @@ class AutopsyRepository extends ChangeNotifier {
   String? get categoryFilter => _categoryFilter;
   bool get includeDeleted => _includeDeleted;
 
-  /// Load autopsies with current filters
-  Future<void> loadAutopsies({bool refresh = false}) async {
+  /// 🔥 ENHANCED: Load autopsies with current filters and permission support
+  Future<void> loadAutopsies({
+    bool refresh = false,
+    Map<String, dynamic>? additionalParams, // 🔥 NEW: Permission parameters
+  }) async {
     if (_isLoading && !refresh) return;
 
     try {
@@ -69,7 +73,11 @@ class AutopsyRepository extends ChangeNotifier {
         orderDirection: 'DESC',
       );
 
-      final response = await _client.listAutopsies(params);
+      // 🔥 ENHANCED: Pass permission parameters to service
+      final response = await _client.listAutopsies(
+        params,
+        additionalParams: additionalParams,
+      );
 
       if (refresh) {
         _autopsies = response.data;
@@ -79,6 +87,12 @@ class AutopsyRepository extends ChangeNotifier {
 
       _totalCount = response.total;
       _currentPage++;
+
+      // 🔥 NEW: Log permission-filtered results
+      if (additionalParams != null && additionalParams.isNotEmpty) {
+        debugPrint('🔐 Repository: Loaded ${_autopsies.length} autopsies with permission filtering');
+        debugPrint('🔐 Repository: Permission params: $additionalParams');
+      }
 
     } catch (error) {
       _setError(_getErrorMessage(error));
@@ -93,9 +107,11 @@ class AutopsyRepository extends ChangeNotifier {
     await loadAutopsies();
   }
 
-  /// Refresh autopsy list
-  Future<void> refreshAutopsies() async {
-    await loadAutopsies(refresh: true);
+  /// 🔥 ENHANCED: Refresh autopsy list with permission support
+  Future<void> refreshAutopsies({
+    Map<String, dynamic>? additionalParams, // 🔥 NEW: Permission parameters
+  }) async {
+    await loadAutopsies(refresh: true, additionalParams: additionalParams);
   }
 
   /// Search autopsies
@@ -150,8 +166,13 @@ class AutopsyRepository extends ChangeNotifier {
     await searchAutopsies('');
   }
 
-  /// Apply filters (combined method for compatibility)
-  Future<void> applyFilters({String? status, String? category, String? search}) async {
+  /// 🔥 ENHANCED: Apply filters with permission support
+  Future<void> applyFilters({
+    String? status, 
+    String? category, 
+    String? search, 
+    required Map<String, dynamic> additionalParams, // 🔥 REQUIRED: Permission parameters
+  }) async {
     bool needsRefresh = false;
 
     if (status != _statusFilter) {
@@ -170,8 +191,13 @@ class AutopsyRepository extends ChangeNotifier {
     }
 
     if (needsRefresh) {
-      await loadAutopsies(refresh: true);
+      // 🔥 ENHANCED: Pass permission parameters when refreshing
+      await loadAutopsies(refresh: true, additionalParams: additionalParams);
     }
+
+    // 🔥 NEW: Log applied filters with permissions
+    debugPrint('🔍 Repository: Applied filters - status: $status, category: $category, search: $search');
+    debugPrint('🔐 Repository: Permission params: $additionalParams');
   }
 
   /// Clear caches method for compatibility
@@ -317,11 +343,15 @@ class AutopsyRepository extends ChangeNotifier {
     }
   }
 
-  /// Get autopsy permissions
+  /// 🔥 ENHANCED: Get autopsy permissions from backend
   Future<AutopsyPermissions?> getPermissions() async {
     try {
-      return await _client.getPermissions();
+      debugPrint('🔐 Repository: Loading permissions from service');
+      final permissions = await _client.getPermissions();
+      debugPrint('✅ Repository: Permissions loaded successfully');
+      return permissions;
     } catch (error) {
+      debugPrint('❌ Repository: Error loading permissions: $error');
       _setError(_getErrorMessage(error));
       return null;
     }
@@ -351,6 +381,34 @@ class AutopsyRepository extends ChangeNotifier {
   void clearCurrentAutopsy() {
     _currentAutopsy = null;
     notifyListeners();
+  }
+
+  /// 🔥 NEW: Helper method to check if user can perform actions on a record
+  bool canUserEditRecord(Map<String, dynamic> record, String currentUserId) {
+    // This is a helper method for the UI to check record-level permissions
+    // The actual permission enforcement happens in the backend
+    final assignedUserId = record['assigned_user_id'] ?? record['assignedUserId'];
+    final createdById = record['created_by_id'] ?? record['createdById'];
+    
+    return assignedUserId == currentUserId || createdById == currentUserId;
+  }
+
+  /// 🔥 NEW: Get summary of loaded data with permission info
+  Map<String, dynamic> getDataSummary() {
+    return {
+      'totalLoaded': _autopsies.length,
+      'totalCount': _totalCount,
+      'currentPage': _currentPage,
+      'hasMore': hasMore,
+      'isLoading': _isLoading,
+      'error': _error,
+      'filters': {
+        'search': _searchQuery,
+        'status': _statusFilter,
+        'category': _categoryFilter,
+        'includeDeleted': _includeDeleted,
+      },
+    };
   }
 
   /// Private helper methods

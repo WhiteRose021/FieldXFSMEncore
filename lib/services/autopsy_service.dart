@@ -1,4 +1,4 @@
-// lib/services/autopsy_service.dart - DEBUG VERSION
+// lib/services/autopsy_service.dart - Enhanced with permissions
 
 import 'dart:async';
 import 'dart:developer' as developer;
@@ -38,10 +38,19 @@ class AutopsyService {
 
   // ============= MAIN API METHODS WITH DEBUG =============
 
-  /// List autopsies with extensive debugging
-  Future<AutopsyResponse> listAutopsies(ListAutopsyParams params) async {
+  /// 🔥 ENHANCED: List autopsies with permission-aware filtering
+  Future<AutopsyResponse> listAutopsies(
+    ListAutopsyParams params, {
+    Map<String, dynamic>? additionalParams, // 🔥 NEW: Support for permission-based params
+  }) async {
     developer.log('🎯 START listAutopsies', name: 'AutopsyService');
     print('🟢 CONSOLE: Starting listAutopsies with params: ${params.toJson()}');
+    
+    // 🔥 NEW: Log additional permission parameters
+    if (additionalParams != null && additionalParams.isNotEmpty) {
+      developer.log('🔐 Permission-based additional params: $additionalParams', name: 'AutopsyService');
+      print('🟡 CONSOLE: Permission params: $additionalParams');
+    }
     
     try {
       // Step 1: Log the request
@@ -58,10 +67,16 @@ class AutopsyService {
       if (params.includeDeleted != null) queryParams['includeDeleted'] = params.includeDeleted;
       if (params.onlyDeleted != null) queryParams['onlyDeleted'] = params.onlyDeleted;
 
+      // 🔥 NEW: Add permission-based parameters
+      if (additionalParams != null) {
+        queryParams.addAll(additionalParams);
+        developer.log('🔐 Added permission parameters to query', name: 'AutopsyService');
+      }
+
       queryParams.removeWhere((key, value) => value == null);
       
-      developer.log('📋 Query params: $queryParams', name: 'AutopsyService');
-      print('🟡 CONSOLE: Query params prepared: $queryParams');
+      developer.log('📋 Final query params: $queryParams', name: 'AutopsyService');
+      print('🟡 CONSOLE: Final query params prepared: $queryParams');
 
       // Step 2: Check backend service
       developer.log('🔌 Checking backend service availability', name: 'AutopsyService');
@@ -101,6 +116,12 @@ class AutopsyService {
             if (dataList is List) {
               developer.log('  Data length: ${dataList.length}', name: 'AutopsyService');
               print('🟢 CONSOLE: Found ${dataList.length} autopsies in response');
+              
+              // 🔥 NEW: Log permission-filtered results
+              if (additionalParams?.containsKey('teamFilter') == true) {
+                developer.log('🔐 Results filtered by permissions (teamFilter: ${additionalParams!['teamFilter']})', name: 'AutopsyService');
+                print('🔐 CONSOLE: Permission-filtered results: ${dataList.length} records');
+              }
             }
           }
           
@@ -139,6 +160,118 @@ class AutopsyService {
       }
       
       throw _handleError(error, 'Failed to list autopsies');
+    }
+  }
+
+  // 🔥 NEW: Get permissions from backend
+  Future<AutopsyPermissions> getPermissions() async {
+    developer.log('🔐 Loading permissions from backend', name: 'AutopsyService');
+    print('🟡 CONSOLE: Loading permissions from Encore backend');
+    
+    try {
+      final response = await _backend.get('/metadata/permissions/c_autopsy');
+      
+      if (response.statusCode == 200) {
+        developer.log('✅ Permissions loaded successfully', name: 'AutopsyService');
+        print('🟢 CONSOLE: Permissions received from backend');
+        
+        // Transform the response to AutopsyPermissions
+        final data = response.data;
+        
+        // Debug log the permission data structure
+        developer.log('📋 Permission data structure: ${data.keys.toList()}', name: 'AutopsyService');
+        print('🔐 CONSOLE: Permission data keys: ${data.keys.toList()}');
+        
+        return _transformPermissionResponse(data);
+      } else {
+        throw Exception('Failed to load permissions: ${response.statusCode}');
+      }
+    } catch (error) {
+      developer.log('❌ Error loading permissions: $error', name: 'AutopsyService');
+      print('🔴 CONSOLE: Permission loading failed: $error');
+      
+      // Return default permissions as fallback
+      return AutopsyPermissions(
+        canRead: true,
+        canEdit: false,
+        canCreate: false,
+        canDelete: false,
+        canRestore: false,
+        canPermanentDelete: false,
+        canViewDeleted: false,
+        visibleFields: ['name', 'autopsyStatus', 'createdAt'],
+        editableFields: [],
+        creatableFields: [],
+      );
+    }
+  }
+
+  // 🔥 NEW: Transform Encore permission response to AutopsyPermissions
+  AutopsyPermissions _transformPermissionResponse(Map<String, dynamic> data) {
+    try {
+      final entityPermissions = data['entityPermissions'] ?? {};
+      final fieldPermissions = data['fieldPermissions'] ?? {};
+      final userContext = data['userContext'] ?? {};
+      
+      developer.log('🔍 Entity permissions: $entityPermissions', name: 'AutopsyService');
+      developer.log('📝 Field permissions: $fieldPermissions', name: 'AutopsyService');
+      
+      // Check if user is admin
+      final isAdmin = userContext['isAdmin'] == true || userContext['isSuperAdmin'] == true;
+      
+      // Extract permission levels
+      final createPermission = entityPermissions['create'] ?? 'no';
+      final readPermission = entityPermissions['read'] ?? 'no';
+      final editPermission = entityPermissions['edit'] ?? 'no';
+      final deletePermission = entityPermissions['delete'] ?? 'no';
+      
+      // Build field lists
+      final visibleFields = <String>[];
+      final editableFields = <String>[];
+      final creatableFields = <String>[];
+      
+      // Process field permissions
+      if (fieldPermissions is Map) {
+        fieldPermissions.forEach((fieldName, fieldPerms) {
+          if (fieldPerms is Map) {
+            if (fieldPerms['read'] != 'no' || isAdmin) {
+              visibleFields.add(fieldName);
+            }
+            if (fieldPerms['edit'] != 'no' || isAdmin) {
+              editableFields.add(fieldName);
+              creatableFields.add(fieldName);
+            }
+          }
+        });
+      }
+      
+      // Default fields if none specified
+      if (visibleFields.isEmpty) {
+        visibleFields.addAll(['name', 'autopsyStatus', 'autopsyComments', 'autopsyCustomerName', 'createdAt']);
+      }
+      
+      final permissions = AutopsyPermissions(
+        canRead: readPermission != 'no' || isAdmin,
+        canCreate: createPermission != 'no' || isAdmin,
+        canEdit: editPermission != 'no' || isAdmin,
+        canDelete: deletePermission != 'no' || isAdmin,
+        canRestore: deletePermission != 'no' || isAdmin,
+        canPermanentDelete: isAdmin,
+        canViewDeleted: editPermission != 'no' || isAdmin,
+        visibleFields: visibleFields,
+        editableFields: editableFields.isNotEmpty ? editableFields : ['name', 'autopsyStatus', 'autopsyComments'],
+        creatableFields: creatableFields.isNotEmpty ? creatableFields : ['name', 'autopsyStatus', 'autopsyComments'],
+      );
+      
+      developer.log('✅ Permissions transformed successfully', name: 'AutopsyService');
+      print('🔐 CONSOLE: Transformed permissions - canCreate: ${permissions.canCreate}, canEdit: ${permissions.canEdit}');
+      
+      return permissions;
+      
+    } catch (error) {
+      developer.log('❌ Error transforming permissions: $error', name: 'AutopsyService');
+      print('🔴 CONSOLE: Permission transformation failed: $error');
+      return AutopsyPermissions.defaultPermissions;
     }
   }
 
@@ -197,7 +330,8 @@ class AutopsyService {
     
     return results;
   }
-     /// ✅ FIXED: Wrapped properly as a method
+
+  /// ✅ FIXED: Wrapped properly as a method
   Future<Map<String, dynamic>> testBackendConnectivity() async {
     developer.log('🧪 Testing backend connectivity', name: 'AutopsyService');
     print('🟡 CONSOLE: Testing backend connectivity...');
@@ -252,7 +386,6 @@ class AutopsyService {
     }
   }
 
-
   // ============= SIMPLE METHODS FOR TESTING =============
 
   /// Create a minimal test autopsy list (fallback)
@@ -285,22 +418,57 @@ class AutopsyService {
 
   Future<SingleAutopsyResponse> getAutopsy(String id) async {
     print('🟡 CONSOLE: getAutopsy called with ID: $id');
-    throw UnimplementedError('getAutopsy not implemented in debug version');
+    developer.log('📡 Making API call to /c_autopsy/$id', name: 'AutopsyService');
+    
+    try {
+      final response = await _backend.get('/c_autopsy/$id');
+      developer.log('✅ getAutopsy API call successful', name: 'AutopsyService');
+      return SingleAutopsyResponse.fromJson(response.data);
+    } catch (error) {
+      developer.log('❌ getAutopsy failed: $error', name: 'AutopsyService');
+      throw _handleError(error, 'Failed to get autopsy');
+    }
   }
 
   Future<CAutopsy> createAutopsy(CreateAutopsyRequest request) async {
     print('🟡 CONSOLE: createAutopsy called');
-    throw UnimplementedError('createAutopsy not implemented in debug version');
+    developer.log('📡 Making API call to POST /c_autopsy', name: 'AutopsyService');
+    
+    try {
+      final response = await _backend.post('/c_autopsy', data: request.toJson());
+      developer.log('✅ createAutopsy API call successful', name: 'AutopsyService');
+      return CAutopsy.fromJson(response.data['data']);
+    } catch (error) {
+      developer.log('❌ createAutopsy failed: $error', name: 'AutopsyService');
+      throw _handleError(error, 'Failed to create autopsy');
+    }
   }
 
   Future<CAutopsy> updateAutopsy(String id, UpdateAutopsyRequest request) async {
     print('🟡 CONSOLE: updateAutopsy called with ID: $id');
-    throw UnimplementedError('updateAutopsy not implemented in debug version');
+    developer.log('📡 Making API call to PUT /c_autopsy/$id', name: 'AutopsyService');
+    
+    try {
+      final response = await _backend.put('/c_autopsy/$id', data: request.toJson());
+      developer.log('✅ updateAutopsy API call successful', name: 'AutopsyService');
+      return CAutopsy.fromJson(response.data['data']);
+    } catch (error) {
+      developer.log('❌ updateAutopsy failed: $error', name: 'AutopsyService');
+      throw _handleError(error, 'Failed to update autopsy');
+    }
   }
 
   Future<void> deleteAutopsy(String id) async {
     print('🟡 CONSOLE: deleteAutopsy called with ID: $id');
-    throw UnimplementedError('deleteAutopsy not implemented in debug version');
+    developer.log('📡 Making API call to DELETE /c_autopsy/$id', name: 'AutopsyService');
+    
+    try {
+      await _backend.delete('/c_autopsy/$id');
+      developer.log('✅ deleteAutopsy API call successful', name: 'AutopsyService');
+    } catch (error) {
+      developer.log('❌ deleteAutopsy failed: $error', name: 'AutopsyService');
+      throw _handleError(error, 'Failed to delete autopsy');
+    }
   }
 
   Future<AutopsyResponse> searchAutopsies(SearchAutopsyParams params) async {
@@ -312,21 +480,6 @@ class AutopsyService {
 
   Future<CAutopsy> restoreAutopsy(String id) async {
     throw UnimplementedError('Restore autopsy functionality not available in backend');
-  }
-
-  Future<AutopsyPermissions> getPermissions() async {
-    return AutopsyPermissions(
-      canRead: true,
-      canEdit: true,
-      canCreate: true,
-      canDelete: true,
-      canRestore: false,
-      canPermanentDelete: false,
-      canViewDeleted: true,
-      visibleFields: [],
-      editableFields: [],
-      creatableFields: [],
-    );
   }
 
   String getStatusLabel(String? status) {
